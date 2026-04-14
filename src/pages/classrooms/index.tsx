@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router";
 import {
   Card,
   CardContent,
@@ -148,9 +149,7 @@ const Classrooms = () => {
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle>Create Classroom</CardTitle>
-              <CardDescription>
-                Set up a class and generate a student join code.
-              </CardDescription>
+              <CardDescription>Set up a classroom</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreateClassroom} className="space-y-4">
@@ -188,8 +187,8 @@ const Classrooms = () => {
               <Separator className="my-4" />
 
               <p className="text-xs text-muted-foreground">
-                After creating a classroom, share the generated join code so
-                students can enroll.
+                After creating a classroom, share the generated classroom code
+                so students can join.
               </p>
             </CardContent>
           </Card>
@@ -198,7 +197,7 @@ const Classrooms = () => {
             <CardHeader>
               <CardTitle>Your Classrooms</CardTitle>
               <CardDescription>
-                Search by name, description, or join code.
+                Search by name, description, or classroom code.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -218,10 +217,15 @@ const Classrooms = () => {
                     <article className="border p-4" key={classroom.$id}>
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-1">
-                          <h3 className="font-medium">{classroom.name}</h3>
-                          <p className="text-xs text-muted-foreground">
-                            {classroom.description}
-                          </p>
+                          <Link
+                            to={`/classrooms/${classroom.$id}`}
+                            className="hover:underline"
+                          >
+                            <h3 className="font-medium">{classroom.name}</h3>
+                            <p className="text-xs text-muted-foreground">
+                              {classroom.description}
+                            </p>
+                          </Link>
                         </div>
 
                         <div className="flex flex-wrap gap-2">

@@ -11,8 +11,12 @@ interface User extends Timestamps {
 }
 
 interface Classroom extends Timestamps {
-  $id: number;
+  $id: string;
   name: string;
   description: string;
   code: string;
+}
+
+interface Student extends User, Timestamps {
+  accepted: boolean;
 }

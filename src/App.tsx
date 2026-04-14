@@ -6,7 +6,9 @@ import MainLayout from "./layouts/MainLayout";
 // pages
 import Login from "@/pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Classrooms from "./pages/Classrooms";
+
+import Classrooms from "./pages/classrooms/index";
+import ClassroomShow from "./pages/classrooms/show";
 
 function App() {
   return (
@@ -21,6 +23,7 @@ function App() {
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/classrooms" element={<Classrooms />} />
+          <Route path="/classrooms/:id" element={<ClassroomShow />} />
         </Route>
 
         <Route

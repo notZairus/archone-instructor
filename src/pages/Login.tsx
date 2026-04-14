@@ -28,7 +28,12 @@ const Login = () => {
       return;
     }
 
-    await account.createEmailPasswordSession(email, password);
+    try {
+      await account.createEmailPasswordSession(email, password);
+    } catch {
+      toast.error("Invalid credentials");
+      return;
+    }
 
     setAuthUser({
       $id: userInfo.$id,
@@ -46,9 +51,6 @@ const Login = () => {
 
   return (
     <div className="w-full min-h-screen bg-background flex items-center justify-center flex-col space-y-8">
-      <p>
-        {loggedInUser ? `Logged in as ${loggedInUser.name}` : "Not logged in"}
-      </p>
       <Card className="px-4 py-8 w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-3xl text-center">Archone</CardTitle>
