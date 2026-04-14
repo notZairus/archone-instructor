@@ -9,3 +9,10 @@ interface User extends Timestamps {
   email: string;
   role?: string;
 }
+
+interface Classroom extends Timestamps {
+  $id: number;
+  name: string;
+  description: string;
+  code: string;
+}

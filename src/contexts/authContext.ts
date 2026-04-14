@@ -4,7 +4,7 @@ import React from "react";
 export type AuthContextType = {
   authUser: User;
   setAuthUser: React.Dispatch<React.SetStateAction<User>>;
-} | null;
+};
 
 export const authContext = createContext<AuthContextType>(null);
 

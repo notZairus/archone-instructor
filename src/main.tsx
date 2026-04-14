@@ -5,12 +5,15 @@ import "./index.css";
 import App from "./App.tsx";
 import { Toaster } from "sonner";
 import AuthProvider from "./components/AuthProvider.tsx";
+import ClassroomProvider from "./components/ClassroomProvider.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <ClassroomProvider>
+          <App />
+        </ClassroomProvider>
       </AuthProvider>
       <Toaster />
     </BrowserRouter>

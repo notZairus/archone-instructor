@@ -1,4 +1,4 @@
-import { HouseIcon } from "@phosphor-icons/react";
+import { SquaresFourIcon, ChalkboardIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import {
@@ -13,9 +13,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuthContext } from "@/contexts/authContext";
@@ -26,8 +26,14 @@ const menuItems = [
   {
     title: "Dashboard",
     href: "/dashboard",
-    icon: HouseIcon,
+    icon: SquaresFourIcon,
     match: (pathname: string) => pathname === "/dashboard",
+  },
+  {
+    title: "Classrooms",
+    href: "/classrooms",
+    icon: ChalkboardIcon,
+    match: (pathname: string) => pathname === "/classrooms",
   },
 ];
 
@@ -60,7 +66,7 @@ const MainLayout = () => {
             </div>
           </SidebarHeader>
 
-          <SidebarSeparator />
+          <Separator />
 
           <SidebarContent>
             <SidebarGroup>

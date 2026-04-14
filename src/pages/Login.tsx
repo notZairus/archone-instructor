@@ -1,12 +1,11 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { account, tablesDB } from "@/lib/appwrite";
-import { Query } from "appwrite";
+import { account } from "@/lib/appwrite";
 import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/authContext";
+import { getUserWithEmail } from "@/lib/db";
+import InputField from "@/components/InputField";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -17,16 +16,7 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const result = await tablesDB.listRows({
-      databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
-      tableId: "users",
-      queries: [Query.equal("email", email), Query.limit(1)],
-    });
-
-    setEmail("");
-    setPassword("");
-
-    const userInfo = result.rows[0] || null;
+    const userInfo = await getUserWithEmail(email);
 
     if (!userInfo) {
       toast.error("User not found");
@@ -38,9 +28,8 @@ const Login = () => {
       return;
     }
 
-    const user = await account.createEmailPasswordSession(email, password);
+    await account.createEmailPasswordSession(email, password);
 
-    console.log(user);
     setAuthUser({
       $id: userInfo.$id,
       name: userInfo.name,
@@ -49,6 +38,9 @@ const Login = () => {
       $updatedAt: userInfo.$updatedAt,
       $createdAt: userInfo.$createdAt,
     } as User);
+
+    setEmail("");
+    setPassword("");
     toast.success("Logged in successfully");
   };
 
@@ -91,28 +83,6 @@ const Login = () => {
           </form>
         </CardContent>
       </Card>
-    </div>
-  );
-};
-
-const InputField = ({
-  label = "Label",
-  htmlFor = "",
-  type = "text",
-  placeholder = "",
-  value,
-  onChange,
-}) => {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={htmlFor}>{label}</Label>
-      <Input
-        id={htmlFor}
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-      />
     </div>
   );
 };
