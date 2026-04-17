@@ -5,6 +5,8 @@ import MainLayout from "./layouts/MainLayout";
 
 // pages
 import Login from "@/pages/Login";
+import Register from "./pages/Register";
+import Verify from "./pages/Verify";
 import Dashboard from "./pages/Dashboard";
 
 import Classrooms from "./pages/classrooms/index";
@@ -36,6 +38,17 @@ function App() {
             </UnauthenticatedRoute>
           }
         />
+
+        <Route
+          path="/register"
+          element={
+            <UnauthenticatedRoute>
+              <Register />
+            </UnauthenticatedRoute>
+          }
+        />
+
+        <Route path="/verify" element={<Verify />} />
       </Routes>
     </>
   );

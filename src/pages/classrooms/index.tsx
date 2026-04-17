@@ -127,22 +127,6 @@ const Classrooms = () => {
               glance.
             </p>
           </div>
-
-          <Card className="w-sm">
-            <CardContent className="grid gap-3 p-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Total Classrooms
-                </p>
-                <p className="text-2xl font-medium">{classrooms.length}</p>
-              </div>
-
-              <div className="sm:border-l sm:pl-4">
-                <p className="text-xs text-muted-foreground">Total Students</p>
-                <p className="text-2xl font-medium">zai</p>
-              </div>
-            </CardContent>
-          </Card>
         </header>
 
         <section className="grid gap-4 lg:grid-cols-3">
@@ -245,9 +229,6 @@ const Classrooms = () => {
                         <p>
                           Join Code:{" "}
                           <span className="font-medium">{classroom.code}</span>
-                        </p>
-                        <p className="text-right">
-                          Enrolled: <span className="font-medium">zai</span>
                         </p>
                       </div>
                     </article>

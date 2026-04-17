@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/authContext";
 import { getUserWithEmail } from "@/lib/db";
 import InputField from "@/components/InputField";
+import { Link } from "react-router";
+import type { ChangeEvent } from "react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { authUser, setAuthUser } = useAuthContext();
-  const loggedInUser = authUser;
+  const { setAuthUser } = useAuthContext();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +26,11 @@ const Login = () => {
 
     if (userInfo.role !== "instructor") {
       toast.error("Unauthorized");
+      return;
+    }
+
+    if (userInfo.status !== "verified") {
+      toast.error("Please verify your email before logging in");
       return;
     }
 
@@ -53,7 +59,7 @@ const Login = () => {
     <div className="w-full min-h-screen bg-background flex items-center justify-center flex-col space-y-8">
       <Card className="px-4 py-8 w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-3xl text-center">Archone</CardTitle>
+          <CardTitle className="text-3xl text-center">Sign In</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
@@ -64,7 +70,9 @@ const Login = () => {
                 type={"email"}
                 placeholder="Enter your email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setEmail(e.target.value)
+                }
               />
 
               <InputField
@@ -73,7 +81,9 @@ const Login = () => {
                 type={"password"}
                 placeholder="Enter your password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setPassword(e.target.value)
+                }
               />
             </div>
 
@@ -82,6 +92,16 @@ const Login = () => {
                 Sign In
               </Button>
             </div>
+
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link
+                to="/register"
+                className="font-medium text-foreground underline"
+              >
+                Register
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

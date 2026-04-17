@@ -1,6 +1,8 @@
 import { tablesDB } from "./appwrite";
 import { Query, ID } from "appwrite";
 
+type UserRole = "student" | "instructor";
+
 export const getUserWithEmail = async (email: string) => {
   const result = await tablesDB.listRows({
     databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
@@ -9,6 +11,42 @@ export const getUserWithEmail = async (email: string) => {
   });
 
   return result.rows[0] || null;
+};
+
+export const createUser = async ({
+  id,
+  name,
+  email,
+  role,
+}: {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}) => {
+  const newUser = await tablesDB.createRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "users",
+    rowId: id,
+    data: {
+      name,
+      email,
+      role,
+    },
+  });
+
+  return newUser;
+};
+
+export const verifyUserById = async (userId: string) => {
+  await tablesDB.updateRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "users",
+    rowId: userId,
+    data: {
+      status: "verified",
+    },
+  });
 };
 
 export const saveClassroom = async (

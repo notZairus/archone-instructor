@@ -11,14 +11,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   acceptClassroomStudent,
   getClassroomStudents,
@@ -27,11 +26,29 @@ import {
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Pie,
+  PieChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 const ClassroomShow = () => {
   const { id } = useParams();
   const { classrooms } = useClassroomContext();
   const [students, setStudents] = useState<Student[]>([]);
+  const [classStats, setClassStats] = useState<StudentAnalytics | null>(null);
+  const [classStatsLoading, setClassStatsLoading] = useState(false);
+  const [classStatsError, setClassStatsError] = useState<string | null>(null);
   const [studentStats, setStudentStats] = useState<
     Record<string, StudentAnalytics | null>
   >({});
@@ -64,6 +81,54 @@ const ClassroomShow = () => {
 
   const acceptedStudents = students.filter((s) => s.accepted);
   const pendingStudents = students.filter((s) => !s.accepted);
+  const acceptedStudentIdsKey = acceptedStudents
+    .map((student) => student.$id)
+    .sort()
+    .join("|");
+
+  const fetchClassStats = useCallback(async () => {
+    const acceptedStudentIds = acceptedStudentIdsKey
+      ? acceptedStudentIdsKey.split("|")
+      : [];
+
+    if (!acceptedStudentIds.length) {
+      setClassStats(null);
+      setClassStatsError(null);
+      setClassStatsLoading(false);
+      return;
+    }
+
+    setClassStatsLoading(true);
+    setClassStatsError(null);
+
+    try {
+      const analysesByStudent = await Promise.all(
+        acceptedStudentIds.map((studentId) => getUserAnalyses(studentId)),
+      );
+
+      const combinedAnalyses = analysesByStudent.flat() as AnalysisRecord[];
+      const analytics = buildStudentAnalytics(combinedAnalyses);
+      setClassStats(analytics);
+    } catch {
+      setClassStatsError("Could not load class stats right now.");
+      throw new Error("class-stats-refresh-failed");
+    } finally {
+      setClassStatsLoading(false);
+    }
+  }, [acceptedStudentIdsKey]);
+
+  useEffect(() => {
+    void fetchClassStats();
+  }, [fetchClassStats]);
+
+  const handleRefreshClassStats = async () => {
+    try {
+      await fetchClassStats();
+      toast.success("Class performance refreshed");
+    } catch {
+      toast.error("Could not refresh class performance");
+    }
+  };
 
   const handleAcceptStudent = async (studentId: string) => {
     if (!id) return;
@@ -86,10 +151,7 @@ const ClassroomShow = () => {
   const handleStatsSheetOpen = async (student: Student, open: boolean) => {
     if (!open) return;
 
-    if (
-      studentStats[student.$id] !== undefined ||
-      studentStatsLoading[student.$id]
-    ) {
+    if (studentStatsLoading[student.$id]) {
       return;
     }
 
@@ -148,6 +210,107 @@ const ClassroomShow = () => {
             </p>
           </div>
         </header>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between gap-3">
+              <span>Class Performance Overview</span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={classStatsLoading}
+                onClick={() => void handleRefreshClassStats()}
+              >
+                {classStatsLoading ? "Refreshing..." : "Refresh"}
+              </Button>
+            </CardTitle>
+            <CardDescription>
+              Combined stats from all accepted students in this classroom.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {classStatsLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : classStatsError ? (
+              <p className="text-sm text-destructive">{classStatsError}</p>
+            ) : classStats ? (
+              <>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Card size="sm">
+                    <CardContent className="space-y-1 p-3">
+                      <p className="text-sm text-muted-foreground">
+                        Class Quality Score
+                      </p>
+                      <p className="text-xl font-semibold">
+                        {classStats.qualityScore} / 100
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card size="sm">
+                    <CardContent className="space-y-1 p-3">
+                      <p className="text-sm text-muted-foreground">Trend</p>
+                      <p className="text-lg font-semibold">
+                        {formatTrend(classStats.trend)}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card size="sm">
+                    <CardContent className="space-y-1 p-3">
+                      <p className="text-sm text-muted-foreground">
+                        Total Issues
+                      </p>
+                      <p className="text-xl font-semibold">
+                        {classStats.totalIssues}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Most Frequent Class Issues</CardTitle>
+                    <CardDescription>
+                      Patterns your class encounters most often.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {classStats.topIssueTitles.length ? (
+                      <div className="space-y-2">
+                        {classStats.topIssueTitles.map((issue, index) => (
+                          <p
+                            key={issue.title}
+                            className="flex items-center justify-between"
+                          >
+                            <span>
+                              {index + 1}. {issue.title}
+                            </span>
+                            <span className="font-medium">
+                              {issue.percent}%
+                            </span>
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No recurring issue patterns yet.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No accepted students with analyses yet.
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -229,7 +392,7 @@ const ClassroomShow = () => {
                     </SheetTrigger>
                     <SheetContent
                       side="bottom"
-                      className="h-[85vh] overflow-hidden"
+                      className="h-[90vh] overflow-hidden"
                       onOpenAutoFocus={(event) => event.preventDefault()}
                     >
                       <SheetHeader className="border-b pr-14">
@@ -239,8 +402,8 @@ const ClassroomShow = () => {
                         </SheetDescription>
                       </SheetHeader>
 
-                      <ScrollArea className="h-[calc(85vh-80px)]">
-                        <div className="space-y-4 p-4 pr-6">
+                      <ScrollArea className="h-[calc(90vh-80px)]">
+                        <div className="space-y-4 px-24 py-4">
                           {studentStatsLoading[student.$id] ? (
                             <div className="space-y-3">
                               <Skeleton className="h-20 w-full" />
@@ -330,93 +493,223 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
     );
   }
 
+  const severityData = [
+    {
+      key: "warnings",
+      label: "Warnings",
+      value: stats.warnings,
+      fill: "var(--color-warnings)",
+    },
+    {
+      key: "improvements",
+      label: "Improvements",
+      value: stats.improvements,
+      fill: "var(--color-improvements)",
+    },
+    {
+      key: "infos",
+      label: "Info",
+      value: stats.infos,
+      fill: "var(--color-infos)",
+    },
+  ].filter((item) => item.value > 0);
+
+  const topIssueChartData = stats.topIssueTitles.map((issue) => ({
+    issue:
+      issue.title.length > 30 ? `${issue.title.slice(0, 30)}...` : issue.title,
+    fullIssue: issue.title,
+    percent: issue.percent,
+  }));
+
+  const severityChartConfig = {
+    warnings: {
+      label: "Warnings",
+      color: "#000000",
+    },
+    improvements: {
+      label: "Improvements",
+      color: "#111111",
+    },
+    infos: {
+      label: "Info",
+      color: "#1a1a1a",
+    },
+  } satisfies ChartConfig;
+
+  const topIssuesChartConfig = {
+    percent: {
+      label: "Percentage",
+      color: "#000000",
+    },
+  } satisfies ChartConfig;
+
   return (
-    <div className="space-y-4 text-sm">
+    <div className="space-y-4 text-base">
       <div className="grid gap-3 md:grid-cols-3">
         <Card size="sm">
           <CardContent className="space-y-1 p-3">
-            <p className="text-xs text-muted-foreground">Code Quality Score</p>
+            <p className="text-sm text-muted-foreground">Code Quality Score</p>
             <p className="text-xl font-semibold">{stats.qualityScore} / 100</p>
           </CardContent>
         </Card>
         <Card size="sm">
           <CardContent className="space-y-1 p-3">
-            <p className="text-xs text-muted-foreground">Files Analyzed</p>
+            <p className="text-sm text-muted-foreground">Files Analyzed</p>
             <p className="text-xl font-semibold">{stats.totalAnalyses}</p>
           </CardContent>
         </Card>
         <Card size="sm">
           <CardContent className="space-y-1 p-3">
-            <p className="text-xs text-muted-foreground">Trend</p>
-            <p className="text-base font-semibold">
-              {formatTrend(stats.trend)}
-            </p>
+            <p className="text-sm text-muted-foreground">Trend</p>
+            <p className="text-lg font-semibold">{formatTrend(stats.trend)}</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Issues Overview</CardTitle>
-          <CardDescription>
-            Severity breakdown from all analyzed student files.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="flex items-center justify-between">
-            <span className="text-muted-foreground">Total Issues</span>
-            <span className="font-medium">{stats.totalIssues}</span>
-          </p>
-          <p className="flex items-center justify-between">
-            <span className="text-muted-foreground">Warnings</span>
-            <span className="font-medium">{stats.warnings}</span>
-          </p>
-          <p className="flex items-center justify-between">
-            <span className="text-muted-foreground">Improvements</span>
-            <span className="font-medium">{stats.improvements}</span>
-          </p>
-          <p className="flex items-center justify-between">
-            <span className="text-muted-foreground">Info</span>
-            <span className="font-medium">{stats.infos}</span>
-          </p>
-          <p className="flex items-center justify-between">
-            <span className="text-muted-foreground">Estimated Lines</span>
-            <span className="font-medium">
-              {formatNumber(stats.estimatedTotalLines)}
-            </span>
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Issues</CardTitle>
-          <CardDescription>
-            Most frequent issue patterns found in the student submissions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {stats.topIssueTitles.length ? (
-            <div className="space-y-2">
-              {stats.topIssueTitles.map((issue, index) => (
-                <p
-                  key={issue.title}
-                  className="flex items-center justify-between"
-                >
-                  <span>
-                    {index + 1}. {issue.title}
-                  </span>
-                  <span className="font-medium">{issue.percent}%</span>
-                </p>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No recurring issues found.
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Issues Overview</CardTitle>
+            <CardDescription>
+              Severity breakdown from all analyzed student files.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="flex items-center justify-between">
+              <span className="text-muted-foreground">Total Issues</span>
+              <span className="font-medium">{stats.totalIssues}</span>
             </p>
-          )}
-        </CardContent>
-      </Card>
+            <p className="flex items-center justify-between">
+              <span className="text-muted-foreground">Warnings</span>
+              <span className="font-medium">{stats.warnings}</span>
+            </p>
+            <p className="flex items-center justify-between">
+              <span className="text-muted-foreground">Improvements</span>
+              <span className="font-medium">{stats.improvements}</span>
+            </p>
+            <p className="flex items-center justify-between">
+              <span className="text-muted-foreground">Info</span>
+              <span className="font-medium">{stats.infos}</span>
+            </p>
+            <p className="flex items-center justify-between">
+              <span className="text-muted-foreground">Estimated Lines</span>
+              <span className="font-medium">
+                {formatNumber(stats.estimatedTotalLines)}
+              </span>
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Issue Severity Chart</CardTitle>
+            <CardDescription>
+              Visual breakdown of warning, improvement, and info counts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {severityData.length ? (
+              <ChartContainer
+                config={severityChartConfig}
+                className="mx-auto h-64"
+              >
+                <PieChart>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Pie
+                    data={severityData}
+                    dataKey="value"
+                    nameKey="label"
+                    innerRadius={55}
+                    outerRadius={90}
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                  />
+                </PieChart>
+              </ChartContainer>
+            ) : (
+              <p className="text-base text-muted-foreground">
+                No issue data available for charting.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Issues</CardTitle>
+            <CardDescription>
+              Most frequent issue patterns found in the student submissions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {stats.topIssueTitles.length ? (
+              <div className="space-y-2">
+                {stats.topIssueTitles.map((issue, index) => (
+                  <p
+                    key={issue.title}
+                    className="flex items-center justify-between"
+                  >
+                    <span>
+                      {index + 1}. {issue.title}
+                    </span>
+                    <span className="font-medium">{issue.percent}%</span>
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-base text-muted-foreground">
+                No recurring issues found.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Issues Chart</CardTitle>
+            <CardDescription>
+              Highest-frequency issue patterns by percentage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {topIssueChartData.length ? (
+              <ChartContainer config={topIssuesChartConfig} className="h-64">
+                <BarChart
+                  data={topIssueChartData}
+                  margin={{ top: 8, right: 12, left: 12, bottom: 8 }}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="issue" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} width={28} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(_, __, item) => [
+                          `${item.payload.percent}%`,
+                          item.payload.fullIssue,
+                        ]}
+                      />
+                    }
+                  />
+                  <Bar
+                    dataKey="percent"
+                    fill="var(--color-percent)"
+                    stroke="#ffffff"
+                    strokeWidth={1}
+                    radius={0}
+                  />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <p className="text-base text-muted-foreground">
+                No top issue data available for charting.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Separator />
 
@@ -512,7 +805,7 @@ function buildStudentAnalytics(
   const topIssueTitles = toSortedIssuePercentages(
     issueTitleCounts,
     totalIssues,
-    3,
+    5,
   );
 
   return {
