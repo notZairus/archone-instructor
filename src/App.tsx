@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router";
+import { Routes, Route, Navigate } from "react-router";
 import UnauthenticatedRoute from "./components/UnauthenticatedRoute";
 import AuthenticatedRoute from "./components/AuthenticatedRoute";
 import MainLayout from "./layouts/MainLayout";
@@ -14,6 +14,8 @@ function App() {
   return (
     <>
       <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" />} />
+
         <Route
           element={
             <AuthenticatedRoute>

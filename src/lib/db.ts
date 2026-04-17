@@ -90,3 +90,55 @@ export const acceptClassroomStudent = async (
     },
   });
 };
+
+export const getUserAnalyses = async (userId: string) => {
+  const analyses = await tablesDB.listRows({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "analyses",
+    queries: [Query.equal("userId", userId)],
+  });
+
+  const formattedAnalyses = analyses.rows.map((analysis) => ({
+    id: analysis.$id,
+    fileName: analysis.fileName,
+    fileType: analysis.fileType,
+    createdAt: analysis.$createdAt,
+    updatedAt: analysis.$updatedAt,
+  }));
+
+  const properties = ["comments", "issues", "functions", "variables"];
+
+  const formattedAnalysesWithProperties = await Promise.all(
+    formattedAnalyses.map(async (analysis) => {
+      const analysisId = analysis.id;
+      const propertiesData: Record<string, unknown[]> = {};
+
+      for (const property of properties) {
+        propertiesData[property] = await getAnalysisProperty(
+          property,
+          analysisId,
+        );
+      }
+
+      return {
+        ...analysis,
+        ...propertiesData,
+      };
+    }),
+  );
+
+  return formattedAnalysesWithProperties;
+};
+
+async function getAnalysisProperty(tableId: string, analysisId: string) {
+  const properties = await tablesDB.listRows({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId,
+    queries: [Query.equal("analysisId", analysisId)],
+  });
+
+  return properties.rows.map((property) => ({
+    id: property.$id,
+    ...property,
+  }));
+}
