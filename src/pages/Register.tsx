@@ -182,7 +182,6 @@ const Register = () => {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="student">Student</SelectItem>
                   <SelectItem value="instructor">Instructor</SelectItem>
                 </SelectContent>
               </Select>

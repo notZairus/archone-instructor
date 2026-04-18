@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 
 import Classrooms from "./pages/classrooms/index";
 import ClassroomShow from "./pages/classrooms/show";
+import RegisterStudent from "./pages/Register-student";
 
 function App() {
   return (
@@ -44,6 +45,14 @@ function App() {
           element={
             <UnauthenticatedRoute>
               <Register />
+            </UnauthenticatedRoute>
+          }
+        />
+        <Route
+          path="/register-student"
+          element={
+            <UnauthenticatedRoute>
+              <RegisterStudent />
             </UnauthenticatedRoute>
           }
         />
