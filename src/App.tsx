@@ -8,6 +8,8 @@ import Login from "@/pages/Login";
 import Register from "./pages/Register";
 import Verify from "./pages/Verify";
 import Dashboard from "./pages/Dashboard";
+import StudentAnalysis from "./pages/StudentAnalysis";
+import StudentAnalysisShow from "./pages/StudentAnalysisShow";
 
 import Classrooms from "./pages/classrooms/index";
 import ClassroomShow from "./pages/classrooms/show";
@@ -27,6 +29,11 @@ function App() {
           }
         >
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/student-analysis" element={<StudentAnalysis />} />
+          <Route
+            path="/student-analysis/:analysisId"
+            element={<StudentAnalysisShow />}
+          />
           <Route path="/classrooms" element={<Classrooms />} />
           <Route path="/classrooms/:id" element={<ClassroomShow />} />
         </Route>

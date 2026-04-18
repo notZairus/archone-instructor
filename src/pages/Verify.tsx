@@ -4,13 +4,14 @@ import { account } from "@/lib/appwrite";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { verifyUserById } from "@/lib/db";
+import { getUserById, verifyUserById } from "@/lib/db";
 
 type VerificationStatus = "loading" | "success" | "error";
 
 const Verify = () => {
   const [status, setStatus] = useState<VerificationStatus>("loading");
   const [message, setMessage] = useState("Verifying your email...");
+  const [role, setRole] = useState<"student" | "instructor" | null>(null);
 
   useEffect(() => {
     const runVerification = async () => {
@@ -28,8 +29,27 @@ const Verify = () => {
         await account.updateVerification(userId, secret);
         await verifyUserById(userId);
 
+        const verifiedUser = await getUserById(userId);
+
+        if (!verifiedUser) {
+          setStatus("error");
+          setMessage("User not found. Please contact support.");
+          return;
+        }
+
+        setRole(verifiedUser.role);
+
+        if (verifiedUser.role === "instructor") {
+          setStatus("success");
+          setMessage("Email verified successfully. You can now sign in.");
+          toast.success("Email verified successfully");
+          return;
+        }
+
         setStatus("success");
-        setMessage("Email verified successfully. You can now sign in.");
+        setMessage(
+          "Email verified successfully. You can now sign in on Archone CLI.",
+        );
         toast.success("Email verified successfully");
       } catch {
         setStatus("error");
@@ -52,9 +72,14 @@ const Verify = () => {
 
           {status === "loading" ? (
             <p className="text-center text-sm">Please wait...</p>
+          ) : role === "student" ? (
+            <p className="text-center text-sm">
+              
+              Go back to to your terminal and start using Archone CLI.
+            </p>
           ) : (
             <Button asChild size="lg" className="w-full">
-              <Link to="/login">Go To Login</Link>
+              <Link to="/login">Go To Sign In</Link>
             </Button>
           )}
         </CardContent>

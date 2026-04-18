@@ -17,9 +17,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   acceptClassroomStudent,
+  declineClassroomStudent,
   getClassroomStudents,
   getUserAnalyses,
 } from "@/lib/db";
@@ -58,75 +59,178 @@ const ClassroomShow = () => {
   const [studentStatsError, setStudentStatsError] = useState<
     Record<string, string | null>
   >({});
+  const [needsAttention, setNeedsAttention] = useState<StudentRiskEntry[]>([]);
+  const [needsAttentionLoading, setNeedsAttentionLoading] = useState(false);
+  const [needsAttentionError, setNeedsAttentionError] = useState<string | null>(
+    null,
+  );
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
 
   const classroom = classrooms.find((c) => c.$id === id);
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      if (!id) return;
-      const result = await getClassroomStudents(id);
-      setStudents(result);
-    };
+  const fetchStudents = useCallback(async () => {
+    if (!id) return [] as Student[];
+    const result = await getClassroomStudents(id);
+    setStudents(result);
+    return result;
+  }, [id]);
 
-    fetchStudents();
+  useEffect(() => {
+    void fetchStudents();
 
     const pollInterval = setInterval(() => {
-      fetchStudents();
+      void fetchStudents();
     }, 10000);
 
     return () => {
       clearInterval(pollInterval);
     };
-  }, [id]);
+  }, [fetchStudents]);
 
-  const acceptedStudents = students.filter((s) => s.accepted);
-  const pendingStudents = students.filter((s) => !s.accepted);
-  const acceptedStudentIdsKey = acceptedStudents
-    .map((student) => student.$id)
-    .sort()
-    .join("|");
+  const acceptedStudents = useMemo(
+    () => students.filter((student) => student.accepted),
+    [students],
+  );
+  const pendingStudents = useMemo(
+    () => students.filter((student) => !student.accepted),
+    [students],
+  );
+  const acceptedStudentIdsKey = useMemo(
+    () =>
+      acceptedStudents
+        .map((student) => student.$id)
+        .sort()
+        .join("|"),
+    [acceptedStudents],
+  );
+  const acceptedStudentsById = useMemo(
+    () => new Map(acceptedStudents.map((student) => [student.$id, student])),
+    [acceptedStudents],
+  );
+
+  const refreshClassStatsByIds = useCallback(
+    async (acceptedStudentIds: string[]) => {
+      if (!acceptedStudentIds.length) {
+        setClassStats(null);
+        setClassStatsError(null);
+        setClassStatsLoading(false);
+        return;
+      }
+
+      setClassStatsLoading(true);
+      setClassStatsError(null);
+
+      try {
+        const analysesByStudent = await Promise.all(
+          acceptedStudentIds.map((studentId) => getUserAnalyses(studentId)),
+        );
+
+        const combinedAnalyses = analysesByStudent.flat() as AnalysisRecord[];
+        const analytics = buildStudentAnalytics(combinedAnalyses);
+        setClassStats(analytics);
+      } catch {
+        setClassStatsError("Could not load class stats right now.");
+        throw new Error("class-stats-refresh-failed");
+      } finally {
+        setClassStatsLoading(false);
+      }
+    },
+    [],
+  );
 
   const fetchClassStats = useCallback(async () => {
     const acceptedStudentIds = acceptedStudentIdsKey
       ? acceptedStudentIdsKey.split("|")
       : [];
 
-    if (!acceptedStudentIds.length) {
-      setClassStats(null);
-      setClassStatsError(null);
-      setClassStatsLoading(false);
-      return;
-    }
-
-    setClassStatsLoading(true);
-    setClassStatsError(null);
-
-    try {
-      const analysesByStudent = await Promise.all(
-        acceptedStudentIds.map((studentId) => getUserAnalyses(studentId)),
-      );
-
-      const combinedAnalyses = analysesByStudent.flat() as AnalysisRecord[];
-      const analytics = buildStudentAnalytics(combinedAnalyses);
-      setClassStats(analytics);
-    } catch {
-      setClassStatsError("Could not load class stats right now.");
-      throw new Error("class-stats-refresh-failed");
-    } finally {
-      setClassStatsLoading(false);
-    }
-  }, [acceptedStudentIdsKey]);
+    await refreshClassStatsByIds(acceptedStudentIds);
+  }, [acceptedStudentIdsKey, refreshClassStatsByIds]);
 
   useEffect(() => {
     void fetchClassStats();
   }, [fetchClassStats]);
 
+  const refreshNeedsAttentionByIds = useCallback(
+    async (acceptedStudentIds: string[]) => {
+      if (!acceptedStudentIds.length) {
+        setNeedsAttention([]);
+        setNeedsAttentionError(null);
+        setNeedsAttentionLoading(false);
+        return;
+      }
+
+      setNeedsAttentionLoading(true);
+      setNeedsAttentionError(null);
+
+      try {
+        const riskyStudents = await Promise.all(
+          acceptedStudentIds.map(async (studentId) => {
+            const analyses = await getUserAnalyses(studentId);
+            const analytics = buildStudentAnalytics(
+              analyses as AnalysisRecord[],
+            );
+            const { riskScore, reasons } = computeStudentRisk(analytics);
+
+            return {
+              studentId,
+              riskScore,
+              reasons,
+            } satisfies StudentRiskEntry;
+          }),
+        );
+
+        const sortedTopRisk = riskyStudents
+          .sort(
+            (a, b) =>
+              b.riskScore - a.riskScore ||
+              a.studentId.localeCompare(b.studentId),
+          )
+          .slice(0, 5);
+
+        setNeedsAttention(sortedTopRisk);
+      } catch {
+        setNeedsAttentionError("Could not evaluate risk levels right now.");
+        setNeedsAttention([]);
+      } finally {
+        setNeedsAttentionLoading(false);
+      }
+    },
+    [],
+  );
+
+  const fetchNeedsAttention = useCallback(async () => {
+    const acceptedStudentIds = acceptedStudentIdsKey
+      ? acceptedStudentIdsKey.split("|")
+      : [];
+
+    await refreshNeedsAttentionByIds(acceptedStudentIds);
+  }, [acceptedStudentIdsKey, refreshNeedsAttentionByIds]);
+
+  useEffect(() => {
+    void fetchNeedsAttention();
+  }, [fetchNeedsAttention]);
+
   const handleRefreshClassStats = async () => {
+    if (!id) return;
+
+    setIsRefreshingAll(true);
+
     try {
-      await fetchClassStats();
-      toast.success("Class performance refreshed");
+      const latestStudents = await fetchStudents();
+      const acceptedStudentIds = latestStudents
+        .filter((student) => student.accepted)
+        .map((student) => student.$id);
+
+      await Promise.all([
+        refreshClassStatsByIds(acceptedStudentIds),
+        refreshNeedsAttentionByIds(acceptedStudentIds),
+      ]);
+
+      toast.success("Classroom data refreshed");
     } catch {
-      toast.error("Could not refresh class performance");
+      toast.error("Could not refresh classroom data");
+    } finally {
+      setIsRefreshingAll(false);
     }
   };
 
@@ -145,6 +249,22 @@ const ClassroomShow = () => {
       toast.success("Student accepted");
     } catch {
       toast.error("Could not accept student");
+    }
+  };
+
+  const handleDeclineStudent = async (studentId: string) => {
+    if (!id) return;
+
+    try {
+      await declineClassroomStudent(id, studentId);
+
+      setStudents((current) =>
+        current.filter((student) => student.$id !== studentId),
+      );
+
+      toast.success("Student declined");
+    } catch {
+      toast.error("Could not decline student");
     }
   };
 
@@ -178,6 +298,56 @@ const ClassroomShow = () => {
         [student.$id]: false,
       }));
     }
+  };
+
+  const renderStudentStatsTrigger = (student: Student) => {
+    return (
+      <Sheet
+        onOpenChange={(open) => {
+          void handleStatsSheetOpen(student, open);
+        }}
+      >
+        <SheetTrigger asChild>
+          <Button size="sm">Show Stats</Button>
+        </SheetTrigger>
+        <SheetContent
+          side="bottom"
+          className="h-[90vh] overflow-hidden"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
+          <SheetHeader className="border-b pr-14">
+            <SheetTitle>{student.name}</SheetTitle>
+            <SheetDescription>Stats summary for this student.</SheetDescription>
+          </SheetHeader>
+
+          <ScrollArea className="h-[calc(90vh-80px)]">
+            <div className="space-y-4 px-24 py-4">
+              {studentStatsLoading[student.$id] ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-28 w-full" />
+                </div>
+              ) : studentStatsError[student.$id] ? (
+                <Card>
+                  <CardContent className="p-4 text-sm text-destructive">
+                    {studentStatsError[student.$id]}
+                  </CardContent>
+                </Card>
+              ) : studentStats[student.$id] ? (
+                <StudentStatsView stats={studentStats[student.$id]} />
+              ) : (
+                <Card>
+                  <CardContent className="p-4 text-sm text-muted-foreground">
+                    No analyses available for this student yet.
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+    );
   };
 
   if (!classroom) {
@@ -218,10 +388,12 @@ const ClassroomShow = () => {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={classStatsLoading}
+                disabled={
+                  classStatsLoading || needsAttentionLoading || isRefreshingAll
+                }
                 onClick={() => void handleRefreshClassStats()}
               >
-                {classStatsLoading ? "Refreshing..." : "Refresh"}
+                {isRefreshingAll ? "Refreshing..." : "Refresh"}
               </Button>
             </CardTitle>
             <CardDescription>
@@ -314,6 +486,59 @@ const ClassroomShow = () => {
 
         <Card>
           <CardHeader>
+            <CardTitle>Needs Attention</CardTitle>
+            <CardDescription>
+              Top 5 accepted students with the highest risk score.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {needsAttentionLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : needsAttentionError ? (
+              <p className="text-sm text-destructive">{needsAttentionError}</p>
+            ) : needsAttention.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No accepted students to evaluate.
+              </p>
+            ) : (
+              needsAttention.map((entry) =>
+                (() => {
+                  const student = acceptedStudentsById.get(entry.studentId);
+                  if (!student) {
+                    return null;
+                  }
+
+                  return (
+                    <article key={student.$id} className="border p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-1">
+                          <h3 className="font-medium">{student.name}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            Risk Score:{" "}
+                            <span className="font-medium">
+                              {entry.riskScore}/100
+                            </span>
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {entry.reasons.join(" • ")}
+                          </p>
+                        </div>
+
+                        {renderStudentStatsTrigger(student)}
+                      </div>
+                    </article>
+                  );
+                })(),
+              )
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="flex justify-between items-center">
               <p>Student List</p>
               <div className="flex items-center gap-2">
@@ -353,12 +578,23 @@ const ClassroomShow = () => {
                               </p>
                             </div>
 
-                            <Button
-                              size="sm"
-                              onClick={() => handleAcceptStudent(student.$id)}
-                            >
-                              Accept
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleDeclineStudent(student.$id)
+                                }
+                              >
+                                Decline
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAcceptStudent(student.$id)}
+                              >
+                                Accept
+                              </Button>
+                            </div>
                           </article>
                         ))
                       )}
@@ -382,55 +618,7 @@ const ClassroomShow = () => {
                     </p>
                   </div>
 
-                  <Sheet
-                    onOpenChange={(open) => {
-                      void handleStatsSheetOpen(student, open);
-                    }}
-                  >
-                    <SheetTrigger asChild>
-                      <Button size="sm">Show Stats</Button>
-                    </SheetTrigger>
-                    <SheetContent
-                      side="bottom"
-                      className="h-[90vh] overflow-hidden"
-                      onOpenAutoFocus={(event) => event.preventDefault()}
-                    >
-                      <SheetHeader className="border-b pr-14">
-                        <SheetTitle>{student.name}</SheetTitle>
-                        <SheetDescription>
-                          Stats summary for this student.
-                        </SheetDescription>
-                      </SheetHeader>
-
-                      <ScrollArea className="h-[calc(90vh-80px)]">
-                        <div className="space-y-4 px-24 py-4">
-                          {studentStatsLoading[student.$id] ? (
-                            <div className="space-y-3">
-                              <Skeleton className="h-20 w-full" />
-                              <Skeleton className="h-24 w-full" />
-                              <Skeleton className="h-28 w-full" />
-                            </div>
-                          ) : studentStatsError[student.$id] ? (
-                            <Card>
-                              <CardContent className="p-4 text-sm text-destructive">
-                                {studentStatsError[student.$id]}
-                              </CardContent>
-                            </Card>
-                          ) : studentStats[student.$id] ? (
-                            <StudentStatsView
-                              stats={studentStats[student.$id]}
-                            />
-                          ) : (
-                            <Card>
-                              <CardContent className="p-4 text-sm text-muted-foreground">
-                                No analyses available for this student yet.
-                              </CardContent>
-                            </Card>
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </SheetContent>
-                  </Sheet>
+                  {renderStudentStatsTrigger(student)}
                 </div>
               </article>
             ))}
@@ -480,6 +668,12 @@ type StudentAnalytics = {
   topIssueTitles: TopIssue[];
   insights: string[];
   recommendations: string[];
+};
+
+type StudentRiskEntry = {
+  studentId: string;
+  riskScore: number;
+  reasons: string[];
 };
 
 const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
@@ -1039,6 +1233,54 @@ function buildRecommendations(topIssueTitles: TopIssue[]) {
   }
 
   return recommendations;
+}
+
+function computeStudentRisk(analytics: StudentAnalytics | null): {
+  riskScore: number;
+  reasons: string[];
+} {
+  let riskScore = 0;
+  const reasons: string[] = [];
+
+  if (!analytics) {
+    riskScore += 30;
+    reasons.push("No analyses yet");
+
+    return {
+      riskScore: clamp(riskScore, 0, 100),
+      reasons: reasons.slice(0, 2),
+    };
+  }
+
+  if (analytics.trend.direction === "declining") {
+    riskScore += 25;
+    reasons.push("Declining trend");
+  }
+
+  if (analytics.qualityScore < 60) {
+    riskScore += 25;
+    reasons.push("Low quality score");
+  } else if (analytics.qualityScore < 75) {
+    riskScore += 10;
+    reasons.push("Moderate quality score");
+  }
+
+  const issueDensity =
+    analytics.totalIssues / Math.max(1, analytics.estimatedTotalLines);
+  if (issueDensity > 0.08) {
+    riskScore += 20;
+    reasons.push("High issue density");
+  } else if (issueDensity > 0.04) {
+    riskScore += 10;
+    reasons.push("Moderate issue density");
+  }
+
+  const finalReasons = reasons.length ? reasons.slice(0, 2) : ["Monitor"];
+
+  return {
+    riskScore: clamp(riskScore, 0, 100),
+    reasons: finalReasons,
+  };
 }
 
 function formatTrend(trend: TrendSummary) {

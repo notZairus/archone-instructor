@@ -13,6 +13,16 @@ export const getUserWithEmail = async (email: string) => {
   return result.rows[0] || null;
 };
 
+export const getUserById = async (userId: string) => {
+  const result = await tablesDB.getRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "users",
+    rowId: userId,
+  });
+
+  return result;
+};
+
 export const createUser = async ({
   id,
   name,
@@ -129,6 +139,32 @@ export const acceptClassroomStudent = async (
   });
 };
 
+export const declineClassroomStudent = async (
+  classroomId: string,
+  userId: string,
+) => {
+  const result = await tablesDB.listRows({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "classroom_user",
+    queries: [
+      Query.equal("classroomId", classroomId),
+      Query.equal("userId", userId),
+      Query.limit(1),
+    ],
+  });
+
+  const record = result.rows[0];
+  if (!record) {
+    throw new Error("Student request not found");
+  }
+
+  return tablesDB.deleteRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "classroom_user",
+    rowId: record.$id,
+  });
+};
+
 export const getUserAnalyses = async (userId: string) => {
   const analyses = await tablesDB.listRows({
     databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
@@ -166,6 +202,36 @@ export const getUserAnalyses = async (userId: string) => {
   );
 
   return formattedAnalysesWithProperties;
+};
+
+export const getAnalysisById = async (analysisId: string) => {
+  const analysis = await tablesDB.getRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "analyses",
+    rowId: analysisId,
+  });
+
+  if (!analysis) {
+    return null;
+  }
+
+  const properties = ["comments", "issues", "functions", "variables"];
+  const propertiesData: Record<string, unknown[]> = {};
+
+  for (const property of properties) {
+    propertiesData[property] = await getAnalysisProperty(property, analysisId);
+  }
+
+  return {
+    id: analysis.$id,
+    userId: analysis.userId,
+    fileName: analysis.fileName,
+    fileType: analysis.fileType,
+    code: analysis.code,
+    createdAt: analysis.$createdAt,
+    updatedAt: analysis.$updatedAt,
+    ...propertiesData,
+  };
 };
 
 async function getAnalysisProperty(tableId: string, analysisId: string) {

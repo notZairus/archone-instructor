@@ -1,4 +1,8 @@
-import { SquaresFourIcon, ChalkboardIcon } from "@phosphor-icons/react";
+import {
+  SquaresFourIcon,
+  ChalkboardIcon,
+  FileTextIcon,
+} from "@phosphor-icons/react";
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import {
@@ -34,6 +38,12 @@ const menuItems = [
     href: "/classrooms",
     icon: ChalkboardIcon,
     match: (pathname: string) => pathname === "/classrooms",
+  },
+  {
+    title: "Student Analysis",
+    href: "/student-analysis",
+    icon: FileTextIcon,
+    match: (pathname: string) => pathname === "/student-analysis",
   },
 ];
 
