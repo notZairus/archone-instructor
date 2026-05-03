@@ -2,13 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Link, useNavigate } from "react-router";
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
@@ -140,7 +133,7 @@ const RegisterStudent = () => {
 
       setForm(initialValues);
       setErrors({});
-      toast.success("Verification email sent. Please check your email."); 
+      toast.success("Verification email sent. Please check your email.");
     } catch (e) {
       console.log(e);
       toast.error("Unable to register right now. Please try again.");
