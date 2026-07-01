@@ -1,14 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Link, useNavigate } from "react-router";
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
@@ -152,18 +144,14 @@ const Register = () => {
 
   return (
     <div className="w-full min-h-screen bg-background flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-md px-4 py-6">
-        <CardHeader>
-          <CardTitle className="text-3xl text-center">Create Account</CardTitle>
-        </CardHeader>
-
-        <CardContent>
+      <div className="bg-background-light shadow w-full max-w-md p-8 rounded-xl">
+        <div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
               <Input
                 id="fullName"
-                placeholder="Enter your full name"
+                placeholder="John C. Doe"
                 value={form.fullName}
                 onChange={(e) => updateField("fullName", e.target.value)}
               />
@@ -173,29 +161,11 @@ const Register = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                value={form.role}
-                onValueChange={(value) => updateField("role", value as Role)}
-              >
-                <SelectTrigger id="role" className="w-full">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="instructor">Instructor</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.role ? (
-                <p className="text-sm text-destructive">{errors.role}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder="example@email.com"
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
               />
@@ -237,12 +207,16 @@ const Register = () => {
             </div>
 
             <div className="pt-2">
-              <Button size="lg" className="w-full" disabled={isSubmitting}>
+              <Button
+                size="lg"
+                className="w-full reflective-primary rounded-lg"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? "Creating account..." : "Register"}
               </Button>
             </div>
 
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-xs text-muted-foreground">
               Already have an account?{" "}
               <Link
                 to="/login"
@@ -252,8 +226,8 @@ const Register = () => {
               </Link>
             </p>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

@@ -345,7 +345,7 @@ const Dashboard = () => {
               Instructor Dashboard
             </h1>
             <p className="text-sm text-muted-foreground">
-              Real-time overview of your classrooms and students.
+              Overview of your classrooms and students.
             </p>
           </div>
         </header>
@@ -356,7 +356,7 @@ const Dashboard = () => {
         >
           <Button
             type="button"
-            variant="outline"
+            className="bg-background-light text-foreground shadow rounded-lg"
             onClick={handleCreateClassroomOpen}
             aria-label="Create classroom"
           >
@@ -364,24 +364,24 @@ const Dashboard = () => {
           </Button>
           <Button
             type="button"
-            variant="outline"
+            className="bg-background-light text-foreground shadow rounded-lg"
             onClick={handleReviewPendingOpen}
             aria-label="Review pending classroom requests"
           >
             Review Pending
           </Button>
           <Button
-            type="button"
+            className="bg-background-light text-foreground shadow primary rounded-lg"
             onClick={() => void handleRefreshAnalytics()}
             disabled={isLoadingStats}
             aria-label="Refresh dashboard analytics"
           >
-            {isLoadingStats ? "Refreshing..." : "Refresh Analytics"}
+            {isLoadingStats ? "Refreshing..." : "Refresh"}
           </Button>
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card>
+          <Card className="bg-background-light text-foreground">
             <CardHeader className="pb-2">
               <CardDescription>Classrooms Created</CardDescription>
               <CardTitle className="text-3xl">{classrooms.length}</CardTitle>
@@ -393,7 +393,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-background-light text-foreground">
             <CardHeader className="pb-2">
               <CardDescription>Total Accepted Students</CardDescription>
               <CardTitle className="text-3xl">
@@ -407,7 +407,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-background-light text-foreground">
             <CardHeader className="pb-2">
               <CardDescription>Pending Classroom Acceptance</CardDescription>
               <CardTitle className="text-3xl">
@@ -430,7 +430,7 @@ const Dashboard = () => {
           open={isCreateClassroomModalOpen}
           onOpenChange={setIsCreateClassroomModalOpen}
         >
-          <DialogContent className="p-0">
+          <DialogContent className="p-0 text-foreground">
             <DialogHeader>
               <DialogTitle>Create Classroom</DialogTitle>
               <DialogDescription>
@@ -477,13 +477,17 @@ const Dashboard = () => {
                 <DialogClose asChild>
                   <Button
                     type="button"
-                    variant="outline"
+                    className="reflective rounded-lg"
                     disabled={isCreatingClassroom}
                   >
                     Cancel
                   </Button>
                 </DialogClose>
-                <Button type="submit" disabled={isCreatingClassroom}>
+                <Button
+                  type="submit"
+                  className="reflective-primary rounded-lg"
+                  disabled={isCreatingClassroom}
+                >
                   {isCreatingClassroom ? "Creating..." : "Create Classroom"}
                 </Button>
               </DialogFooter>
@@ -517,7 +521,6 @@ const Dashboard = () => {
                       <p className="text-sm text-destructive">{pendingError}</p>
                       <Button
                         type="button"
-                        variant="outline"
                         onClick={() => void handleRefreshPendingRequests()}
                         disabled={isLoadingPending}
                         aria-label="Retry loading pending requests"
@@ -527,11 +530,9 @@ const Dashboard = () => {
                     </CardContent>
                   </Card>
                 ) : pendingByClassroom.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-4 text-sm text-muted-foreground">
-                      No pending requests at the moment.
-                    </CardContent>
-                  </Card>
+                  <div className="text-center text-muted-foreground mt-20">
+                    No pending requests at the moment.
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     {pendingByClassroom.map((entry) => (
@@ -629,7 +630,7 @@ const Dashboard = () => {
             <DialogFooter>
               <Button
                 type="button"
-                variant="outline"
+                className="reflective-primary rounded-lg"
                 onClick={() => void handleRefreshPendingRequests()}
                 disabled={isLoadingPending}
                 aria-label="Refresh pending requests"

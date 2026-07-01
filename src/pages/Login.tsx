@@ -57,54 +57,49 @@ const Login = () => {
 
   return (
     <div className="w-full min-h-screen bg-background flex items-center justify-center flex-col space-y-8">
-      <Card className="px-4 py-8 w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-3xl text-center">Sign In</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="mt-4 space-y-4">
-              <InputField
-                label={"Email"}
-                htmlFor={"email"}
-                type={"email"}
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setEmail(e.target.value)
-                }
-              />
+      <div className="w-full bg-background-light shadow max-w-md p-8 rounded-xl">
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <InputField
+              label={"Email"}
+              htmlFor={"email"}
+              type={"email"}
+              placeholder="example@email.com"
+              value={email}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                setEmail(e.target.value)
+              }
+            />
 
-              <InputField
-                label={"Password"}
-                htmlFor={"password"}
-                type={"password"}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setPassword(e.target.value)
-                }
-              />
-            </div>
+            <InputField
+              label={"Password"}
+              htmlFor={"password"}
+              type={"password"}
+              placeholder="mypassword123"
+              value={password}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                setPassword(e.target.value)
+              }
+            />
+          </div>
 
-            <div className="mt-6">
-              <Button size="lg" className="w-full ">
-                Sign In
-              </Button>
-            </div>
+          <div className="mt-6">
+            <Button className="reflective-primary w-full rounded-lg">
+              Sign In
+            </Button>
+          </div>
 
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link
-                to="/register"
-                className="font-medium text-foreground underline"
-              >
-                Register
-              </Link>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+          <p className="mt-4 text-center text-[0.7rem] text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <Link
+              to="/register"
+              className="font-medium text-foreground underline"
+            >
+              Register
+            </Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 };

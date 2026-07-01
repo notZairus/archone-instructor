@@ -163,7 +163,7 @@ const Classrooms = () => {
                   />
                 </div>
 
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full rounded-lg">
                   Create Classroom
                 </Button>
               </form>
@@ -198,40 +198,47 @@ const Classrooms = () => {
                   </p>
                 ) : (
                   filteredClassrooms.map((classroom) => (
-                    <article className="border p-4" key={classroom.$id}>
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div className="space-y-1">
-                          <Link
-                            to={`/classrooms/${classroom.$id}`}
-                            className="hover:underline"
-                          >
-                            <h3 className="font-medium">{classroom.name}</h3>
-                            <p className="text-xs text-muted-foreground">
-                              {classroom.description}
-                            </p>
-                          </Link>
+                    <>
+                      <Card
+                        className="p-4 shadow-md bg-background-lighter"
+                        key={classroom.$id}
+                      >
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div className="space-y-1">
+                            <Link
+                              to={`/classrooms/${classroom.$id}`}
+                              className="hover:underline"
+                            >
+                              <h3 className="font-medium">{classroom.name}</h3>
+                              <CardTitle className="text-xs text-muted-foreground">
+                                {classroom.description}
+                              </CardTitle>
+                            </Link>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCopyJoinCode(classroom.code)}
+                            >
+                              Copy Join Code
+                            </Button>
+                          </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCopyJoinCode(classroom.code)}
-                          >
-                            Copy Join Code
-                          </Button>
+                        <Separator />
+
+                        <div className="grid gap-2 sm:grid-cols-2  text-xs">
+                          <p>
+                            Join Code:{" "}
+                            <span className="font-medium">
+                              {classroom.code}
+                            </span>
+                          </p>
                         </div>
-                      </div>
-
-                      <Separator className="my-3" />
-
-                      <div className="grid gap-2 sm:grid-cols-2  text-xs">
-                        <p>
-                          Join Code:{" "}
-                          <span className="font-medium">{classroom.code}</span>
-                        </p>
-                      </div>
-                    </article>
+                      </Card>
+                    </>
                   ))
                 )}
               </div>

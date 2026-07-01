@@ -19,7 +19,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuthContext } from "@/contexts/authContext";
@@ -68,20 +67,18 @@ const MainLayout = () => {
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <Sidebar>
-          <SidebarHeader>
-            <div className="px-2 py-1">
+        <Sidebar variant="floating">
+          <SidebarHeader className="rounded-xl px-8 py-6 m-2 shadow-md bg-background-lightest">
+            <div className="text-center">
               <p className="text-xs text-sidebar-foreground/70">Archone</p>
-              <h2 className="text-sm font-semibold">Instructor Portal</h2>
+              <h2 className="font-semibold">Instructor Portal</h2>
             </div>
           </SidebarHeader>
-
-          <Separator />
 
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-              <SidebarMenu>
+              <SidebarMenu className="space-y-1">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
 
@@ -108,7 +105,7 @@ const MainLayout = () => {
             <button
               type="button"
               onClick={() => setShowLogout((current) => !current)}
-              className="w-full rounded-none border border-sidebar-border px-2 py-3 text-left text-xs"
+              className="w-full bg-background-lightest shadow-md rounded-xl px-2 py-3 text-left text-xs"
             >
               Signed in as <br /> {authUser?.name || "Instructor"}
             </button>
@@ -116,9 +113,8 @@ const MainLayout = () => {
             {showLogout && (
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                className="w-full"
+                className="w-full bg-background-lightest text-foreground shadow rounded-lg"
                 onClick={handleLogout}
               >
                 Logout
@@ -128,10 +124,12 @@ const MainLayout = () => {
         </Sidebar>
 
         <SidebarInset>
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur">
-            <SidebarTrigger />
-            <p className="text-sm text-muted-foreground"></p>
-          </header>
+          <div className="pt-4 sm:px-8 sticky top-0 z-10">
+            <header className="rounded-xl bg-background-lighter top-0 z-10 flex h-14 items-center gap-2 shadow-lg px-4">
+              <SidebarTrigger className="bg-transparent text-foreground cursor-pointer" />
+              <p className="text-sm text-muted-foreground"></p>
+            </header>
+          </div>
 
           <div className="flex-1">
             <Outlet />

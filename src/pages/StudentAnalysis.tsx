@@ -346,7 +346,7 @@ const StudentAnalysis = () => {
                 </article>
               ))
             ) : (
-              <p className="rounded-none border border-dashed p-4 text-sm text-muted-foreground">
+              <p className="rounded-none p-4 text-sm text-muted-foreground">
                 {query.trim()
                   ? "No analysis records matched your search."
                   : "No analysis records found for your classroom members yet."}
