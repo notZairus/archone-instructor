@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import {
   Card,
@@ -8,6 +8,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { getAnalysisById, getClassroomStudents, getUserById } from "@/lib/db";
@@ -66,7 +75,7 @@ const TYPE_DISPLAY_ORDER = [
   "unknown",
 ];
 
-const ISSUE_PRINCIPLE_BY_TITLE: Record<string, string> = {
+const ISSUE_PRINCIPLE_BY_TITLE = {
   "Unused Variable": "YAGNI (You Aren't Gonna Need It)",
   "Unused Function": "YAGNI (You Aren't Gonna Need It)",
   "Use of var": "KISS (Keep It Simple, Stupid)",
@@ -78,8 +87,18 @@ const ISSUE_PRINCIPLE_BY_TITLE: Record<string, string> = {
   "High Complexity": "Separation of Concerns",
   "Duplicate Code Blocks": "DRY (Don't Repeat Yourself)",
   "Deep Nesting": "KISS (Keep It Simple, Stupid)",
-  "TODO Comment": "Avoid Premature Optimization",
+  "TODO Comment": "N/A",
   "Commented-out Code": "YAGNI (You Aren't Gonna Need It)",
+  "Mixed Language Syntax": "KISS (Keep It Simple, Stupid)",
+
+  // OOP mode
+  "No Constructor": "KISS (Keep It Simple, Stupid)",
+  "Too Many Dependencies": "Separation of Concerns",
+  "Method Too Long": "Single Responsibility Principle",
+  "Large Class / God Class": "Single Responsibility Principle",
+  "Hardcoded Values": "KISS (Keep It Simple, Stupid)",
+  "Too Many Public Methods": "Separation of Concerns",
+  "Duplicate Methods": "DRY (Don't Repeat Yourself)",
 };
 
 const BASE_ISSUE_PENALTIES = [
@@ -93,6 +112,34 @@ const BASE_ISSUE_PENALTIES = [
   { title: "Naming Convention", penalty: 0.75 },
   { title: "Commented-out Code", penalty: 0.5 },
   { title: "TODO Comment", penalty: 0.2 },
+  {
+    title: "Method Too Long",
+    penalty: 1.0,
+  },
+  {
+    title: "No Constructor",
+    penalty: 0.75,
+  },
+  {
+    title: "Too Many Dependencies",
+    penalty: 1.25,
+  },
+  {
+    title: "Hardcoded Values",
+    penalty: 0.75,
+  },
+  {
+    title: "Too Many Public Methods",
+    penalty: 0.75,
+  },
+  {
+    title: "Duplicate Methods",
+    penalty: 1.0,
+  },
+  {
+    title: "Large Class / God Class",
+    penalty: 1.5,
+  },
 ];
 
 const LANGUAGE_ISSUE_PENALTIES: Record<
@@ -123,8 +170,17 @@ const StudentAnalysisShow = () => {
   const [studentName, setStudentName] = useState(state.studentName || "");
   const [studentEmail, setStudentEmail] = useState(state.studentEmail || "");
   const [classroomName, setClassroomName] = useState(state.classroomName || "");
+  const [selectedLine, setSelectedLine] = useState<number | null>(null);
+  const [selectedLineEnd, setSelectedLineEnd] = useState<number | null>(null);
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const codeLines = useMemo(
+    () => analysis?.code.split(/\r?\n/) || [],
+    [analysis?.code],
+  );
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -286,6 +342,104 @@ const StudentAnalysisShow = () => {
     return "plaintext";
   }, [analysis]);
 
+  const openFeedbackDialog = (startLine: number, endLine = startLine) => {
+    setSelectedLine(startLine);
+    setSelectedLineEnd(endLine);
+    setFeedbackText("");
+    setIsFeedbackDialogOpen(true);
+
+    const selectedLines = Array.from(
+      { length: endLine - startLine + 1 },
+      (_, index) => startLine + index,
+    );
+    const selectedText = selectedLines
+      .map((lineNumber) => `${lineNumber}: ${codeLines[lineNumber - 1] || ""}`)
+      .join("\n");
+
+    console.log(
+      `[ArcHone] selected lines ${startLine}-${endLine}:\n${selectedText}`,
+    );
+  };
+
+  const selectedSnippet = useMemo(() => {
+    if (selectedLine == null) {
+      return "";
+    }
+
+    const endLine = selectedLineEnd ?? selectedLine;
+    return Array.from(
+      { length: endLine - selectedLine + 1 },
+      (_, index) => selectedLine + index,
+    )
+      .map((lineNumber) => `${lineNumber}: ${codeLines[lineNumber - 1] || ""}`)
+      .join("\n");
+  }, [codeLines, selectedLine, selectedLineEnd]);
+
+  const handleCodeSelectionMouseUp = (event: MouseEvent<HTMLDivElement>) => {
+    const selection = window.getSelection();
+
+    if (!selection || selection.isCollapsed) {
+      const target = event.target;
+
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const lineElement = target.closest("[data-line-number]");
+      const lineNumber = lineElement?.getAttribute("data-line-number");
+
+      if (!lineNumber) {
+        return;
+      }
+
+      const parsedLineNumber = Number(lineNumber);
+      if (!Number.isFinite(parsedLineNumber)) {
+        return;
+      }
+
+      openFeedbackDialog(parsedLineNumber);
+      return;
+    }
+
+    const selectedLines = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>("[data-line-number]"),
+    )
+      .filter((lineElement) => {
+        const range = selection.getRangeAt(0);
+
+        try {
+          return range.intersectsNode(lineElement);
+        } catch {
+          return false;
+        }
+      })
+      .map((lineElement) => Number(lineElement.dataset.lineNumber))
+      .filter((lineNumber) => Number.isFinite(lineNumber));
+
+    if (!selectedLines.length) {
+      return;
+    }
+
+    const startLine = Math.min(...selectedLines);
+    const endLine = Math.max(...selectedLines);
+    openFeedbackDialog(startLine, endLine);
+  };
+
+  const handleFeedbackSubmit = () => {
+    if (!feedbackText.trim()) {
+      return;
+    }
+
+    console.log("[ArcHone] instructor feedback", {
+      analysisId,
+      lineStart: selectedLine,
+      lineEnd: selectedLineEnd,
+      feedback: feedbackText.trim(),
+    });
+
+    setIsFeedbackDialogOpen(false);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-6 md:p-10">
@@ -381,10 +535,6 @@ const StudentAnalysisShow = () => {
               <span className="text-muted-foreground">Analysis date:</span>{" "}
               {formatDateTime(analysis.createdAt)}
             </p>
-            <p>
-              <span className="text-muted-foreground">Quality score:</span>{" "}
-              {qualityScore}/10 {scoreBar}
-            </p>
           </CardContent>
         </Card>
 
@@ -409,7 +559,7 @@ const StudentAnalysisShow = () => {
               {severityBreakdown}
             </p>
             <div>
-              <p className="text-muted-foreground">Top issue titles:</p>
+              <p className="text-muted-foreground">Top issues:</p>
               {topIssueTitles.length ? (
                 <ul className="list-disc pl-5">
                   {topIssueTitles.map((item) => (
@@ -431,26 +581,90 @@ const StudentAnalysisShow = () => {
             <CardDescription>Code captured at analysis time.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-105 rounded-none border bg-muted/30">
-              <SyntaxHighlighter
-                language={syntaxLanguage}
-                style={atomOneDark}
-                customStyle={{
-                  margin: 0,
-                  minWidth: "100%",
-                  background: "transparent",
-                  padding: "1rem",
-                  fontSize: "0.75rem",
-                }}
-                showLineNumbers
-                wrapLongLines={false}
-              >
-                {analysis.code || "No code snapshot available."}
-              </SyntaxHighlighter>
+            <ScrollArea className="h-105 rounded-none border bg-black">
+              <div onMouseUp={handleCodeSelectionMouseUp}>
+                <SyntaxHighlighter
+                  language={syntaxLanguage}
+                  style={atomOneDark}
+                  customStyle={{
+                    margin: 0,
+                    minWidth: "100%",
+                    background: "transparent",
+                    padding: "1rem",
+                    fontSize: "0.75rem",
+                  }}
+                  showLineNumbers
+                  wrapLines
+                  wrapLongLines={false}
+                  lineProps={(lineNumber) => ({
+                    "data-line-number": lineNumber,
+                    onClick: () => openFeedbackDialog(lineNumber),
+                    onMouseUp: () => openFeedbackDialog(lineNumber),
+                    style:
+                      selectedLine === lineNumber
+                        ? {
+                            backgroundColor: "rgba(59, 130, 246, 0.22)",
+                            borderLeft: "2px solid rgb(59, 130, 246)",
+                            cursor: "pointer",
+                            display: "block",
+                          }
+                        : {
+                            cursor: "pointer",
+                            display: "block",
+                          },
+                  })}
+                >
+                  {analysis.code || "No code snapshot available."}
+                </SyntaxHighlighter>
+              </div>
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
           </CardContent>
         </Card>
+
+        <Dialog
+          open={isFeedbackDialogOpen}
+          onOpenChange={setIsFeedbackDialogOpen}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Instructor feedback</DialogTitle>
+              <DialogDescription>
+                Leave a note for line {selectedLine}
+                {selectedLineEnd && selectedLineEnd !== selectedLine
+                  ? ` through ${selectedLineEnd}`
+                  : ""}
+                .
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 px-4 pb-2">
+              <div className="rounded-lg border border-border bg-black p-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Selected code
+                </p>
+                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap wrap-break-word text-xs leading-5 text-white">
+                  {selectedSnippet || "No code selected."}
+                </pre>
+              </div>
+              <Input
+                autoFocus
+                value={feedbackText}
+                onChange={(event) => setFeedbackText(event.target.value)}
+                placeholder="Type your feedback here"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsFeedbackDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleFeedbackSubmit}>Save feedback</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Card>
           <CardHeader>
@@ -549,7 +763,11 @@ function getViolatedPrinciple(issue: AnalysisIssue) {
     return issue.principle;
   }
 
-  return ISSUE_PRINCIPLE_BY_TITLE[issue.title || ""] || "Law of Demeter";
+  return (
+    ISSUE_PRINCIPLE_BY_TITLE[
+      issue.title as keyof typeof ISSUE_PRINCIPLE_BY_TITLE
+    ] || "N/A"
+  );
 }
 
 function getLanguageFromAnalysis(analysis: AnalysisDetail) {

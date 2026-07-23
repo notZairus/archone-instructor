@@ -306,7 +306,7 @@ const StudentAnalysis = () => {
                       });
                     }
                   }}
-                  className="grid cursor-pointer gap-2 rounded-none border p-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:grid-cols-2"
+                  className="grid cursor-pointer gap-2  bg-background-lighter shadow rounded-lg p-4 transition-colors hover:bg-muted/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:grid-cols-2"
                 >
                   <div className="min-w-0 space-y-1">
                     <p className="font-medium wrap-break-word">

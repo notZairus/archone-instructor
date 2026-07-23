@@ -77,7 +77,9 @@ const MainLayout = () => {
 
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+              <SidebarGroupLabel className="text-xs text-sidebar-foreground/70">
+                Navigation
+              </SidebarGroupLabel>
               <SidebarMenu className="space-y-1">
                 {menuItems.map((item) => {
                   const Icon = item.icon;

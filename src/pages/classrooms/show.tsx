@@ -33,6 +33,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { Legend } from "recharts";
 import {
   Bar,
   BarChart,
@@ -512,7 +513,10 @@ const ClassroomShow = () => {
                   }
 
                   return (
-                    <article key={student.$id} className="border p-4">
+                    <article
+                      key={student.$id}
+                      className="bg-background-lighter border-lg shadow rounded-lg p-4"
+                    >
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div className="space-y-1">
                           <h3 className="font-medium">{student.name}</h3>
@@ -569,10 +573,12 @@ const ClassroomShow = () => {
                         pendingStudents.map((student) => (
                           <article
                             key={student.$id}
-                            className="flex items-center justify-between border p-3"
+                            className="flex items-center text-foreground justify-between border p-3"
                           >
                             <div>
-                              <p className="font-medium">{student.name}</p>
+                              <p className="font-medium text-foreground">
+                                {student.name}
+                              </p>
                               <p className="text-xs text-muted-foreground">
                                 {student.email}
                               </p>
@@ -609,7 +615,10 @@ const ClassroomShow = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             {acceptedStudents.map((student) => (
-              <article key={student.$id} className="border p-4">
+              <article
+                key={student.$id}
+                className="shadow bg-background-lighter rounded-lg p-4"
+              >
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <h3 className="font-medium">{student.name}</h3>
@@ -631,6 +640,7 @@ const ClassroomShow = () => {
 
 type AnalysisRecord = {
   createdAt?: string;
+  mode?: "general" | "oop";
   issues?: Array<{ title?: string; type?: string; line?: number }>;
   functions?: Array<{
     complexity?: number;
@@ -692,19 +702,19 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
       key: "warnings",
       label: "Warnings",
       value: stats.warnings,
-      fill: "var(--color-warnings)",
+      fill: "red",
     },
     {
       key: "improvements",
       label: "Improvements",
       value: stats.improvements,
-      fill: "var(--color-improvements)",
+      fill: "orange",
     },
     {
       key: "infos",
       label: "Info",
       value: stats.infos,
-      fill: "var(--color-infos)",
+      fill: "blue",
     },
   ].filter((item) => item.value > 0);
 
@@ -818,6 +828,7 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
                     stroke="#ffffff"
                     strokeWidth={2}
                   />
+                  <Legend />
                 </PieChart>
               </ChartContainer>
             ) : (
@@ -845,7 +856,7 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
                     key={issue.title}
                     className="flex items-center justify-between"
                   >
-                    <span>
+                    <span className="font-bold ">
                       {index + 1}. {issue.title}
                     </span>
                     <span className="font-medium">{issue.percent}%</span>
@@ -889,7 +900,7 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
                   />
                   <Bar
                     dataKey="percent"
-                    fill="var(--color-percent)"
+                    fill="#8b5cf6"
                     stroke="#ffffff"
                     strokeWidth={1}
                     radius={0}
@@ -1208,16 +1219,41 @@ function buildInsights(trend: TrendSummary) {
 
 function buildRecommendations(topIssueTitles: TopIssue[]) {
   const recommendationsByTitle: Record<string, string> = {
+    "Unused Variable":
+      "Remove unused variables or use them in the intended logic.",
+    "Unused Function":
+      "Delete unused functions or connect them to real behavior.",
     "Poor Variable Naming": "Use clearer, intention-revealing variable names.",
     "Naming Convention":
       "Apply one naming style consistently across your code.",
     "Use of var": "Replace 'var' with 'const' or 'let'.",
+    "Name Reuse": "Give each value a distinct name within the same scope.",
+    "Duplicate Code Blocks":
+      "Extract repeated logic into a shared helper to avoid duplication.",
+    "Function Too Long":
+      "Break long functions into smaller helpers with one responsibility.",
+    "Too Many Parameters":
+      "Group related inputs into a single object or structure.",
+    "High Complexity":
+      "Simplify branching logic by splitting it into smaller helpers.",
     "Deep Nesting":
       "Refactor nested logic with early returns or helper functions.",
-    "Commented-out Code":
-      "Remove dead commented code to keep files clean and maintainable.",
     "TODO Comment":
       "Convert TODO comments into tracked tasks and resolve them regularly.",
+    "Commented-out Code":
+      "Remove dead commented code to keep files clean and maintainable.",
+    "No Constructor": "Initialize fields with a constructor or initializer.",
+    "Too Many Dependencies":
+      "Reduce coupling by splitting responsibilities into smaller modules.",
+    "Method Too Long": "Split long methods into focused helper methods.",
+    "Large Class / God Class":
+      "Break large classes into smaller classes by responsibility.",
+    "Hardcoded Values":
+      "Replace magic values with named constants or configuration.",
+    "Too Many Public Methods":
+      "Keep the public API minimal and hide implementation details.",
+    "Duplicate Methods":
+      "Extract shared method logic into one helper and reuse it.",
   };
 
   const recommendations = topIssueTitles.map(

@@ -4,16 +4,19 @@ import AuthenticatedRoute from "./components/AuthenticatedRoute";
 import MainLayout from "./layouts/MainLayout";
 
 // pages
+import RegisterStudent from "./pages/Register-student";
+
 import Login from "@/pages/Login";
 import Register from "./pages/Register";
 import Verify from "./pages/Verify";
+
 import Dashboard from "./pages/Dashboard";
-import StudentAnalysis from "./pages/StudentAnalysis";
-import StudentAnalysisShow from "./pages/StudentAnalysisShow";
+
+import StudentAnalysis from "./pages/student-analysis/index";
+import StudentAnalysisShow from "./pages/student-analysis/show";
 
 import Classrooms from "./pages/classrooms/index";
 import ClassroomShow from "./pages/classrooms/show";
-import RegisterStudent from "./pages/Register-student";
 
 function App() {
   return (
