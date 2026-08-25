@@ -2,11 +2,11 @@ import { createContext, useContext } from "react";
 import React from "react";
 
 export type AuthContextType = {
-  authUser: User;
-  setAuthUser: React.Dispatch<React.SetStateAction<User>>;
+  authUser: User | null;
+  setAuthUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
 
-export const authContext = createContext<AuthContextType>(null);
+export const authContext = createContext<AuthContextType | null>(null);
 
 export const useAuthContext = () => {
   const ctx = useContext(authContext);

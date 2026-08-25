@@ -24,6 +24,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuthContext } from "@/contexts/authContext";
 import { account } from "@/lib/appwrite";
 import { toast } from "sonner";
+import { useThemeContext } from "@/contexts/use-theme-context";
+import { Sun, Moon } from "lucide-react";
 
 const menuItems = [
   {
@@ -51,6 +53,7 @@ const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { authUser, setAuthUser } = useAuthContext();
+  const { theme, setTheme } = useThemeContext();
 
   const handleLogout = async () => {
     try {
@@ -127,9 +130,18 @@ const MainLayout = () => {
 
         <SidebarInset>
           <div className="pt-4 sm:px-8 sticky top-0 z-10">
-            <header className="rounded-xl bg-background-lighter top-0 z-10 flex h-14 items-center gap-2 shadow-lg px-4">
+            <header className="rounded-xl bg-background-lighter top-0 z-10 flex h-14 items-center justify-between gap-2 shadow-lg px-4">
               <SidebarTrigger className="bg-transparent text-foreground cursor-pointer" />
-              <p className="text-sm text-muted-foreground"></p>
+              <div
+                className="cursor-pointer"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              >
+                {theme === "light" ? (
+                  <Sun className="w-5 h-5 text-foreground" />
+                ) : (
+                  <Moon className="w-5 h-5 text-foreground" />
+                )}
+              </div>
             </header>
           </div>
 

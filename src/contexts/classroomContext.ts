@@ -5,7 +5,9 @@ export type initialClassroomContext = {
   setClassrooms: React.Dispatch<React.SetStateAction<Classroom[]>>;
 };
 
-export const classroomContext = createContext<initialClassroomContext>(null);
+export const classroomContext = createContext<initialClassroomContext | null>(
+  null,
+);
 
 export const useClassroomContext = () => {
   const ctx = useContext(classroomContext);
