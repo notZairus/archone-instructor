@@ -139,9 +139,9 @@ const Dashboard = () => {
 
     try {
       await fetchDashboardStats();
-      toast.success("Dashboard analytics refreshed");
+      toast.success("Dashboard refreshed");
     } catch {
-      toast.error("Could not refresh dashboard analytics");
+      toast.error("Could not refresh dashboard");
     }
   };
 
@@ -356,7 +356,9 @@ const Dashboard = () => {
         >
           <Button
             type="button"
-            className="bg-background-light text-foreground shadow rounded-lg"
+            variant="secondary"
+            size="lg"
+            className="hover:scale-105"
             onClick={handleCreateClassroomOpen}
             aria-label="Create classroom"
           >
@@ -364,14 +366,16 @@ const Dashboard = () => {
           </Button>
           <Button
             type="button"
-            className="bg-background-light text-foreground shadow rounded-lg"
+            variant="secondary"
+            className="hover:scale-105"
             onClick={handleReviewPendingOpen}
             aria-label="Review pending classroom requests"
           >
             Review Pending
           </Button>
           <Button
-            className="bg-background-light text-foreground shadow primary rounded-lg"
+            variant="secondary"
+            className="hover:scale-105"
             onClick={() => void handleRefreshAnalytics()}
             disabled={isLoadingStats}
             aria-label="Refresh dashboard analytics"
@@ -381,7 +385,7 @@ const Dashboard = () => {
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card className="bg-background-light text-foreground">
+          <Card className="">
             <CardHeader className="pb-2">
               <CardDescription>Classrooms Created</CardDescription>
               <CardTitle className="text-3xl">{classrooms.length}</CardTitle>
@@ -393,7 +397,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-background-light text-foreground">
+          <Card className="">
             <CardHeader className="pb-2">
               <CardDescription>Total Accepted Students</CardDescription>
               <CardTitle className="text-3xl">
@@ -407,7 +411,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-background-light text-foreground">
+          <Card className="">
             <CardHeader className="pb-2">
               <CardDescription>Pending Classroom Acceptance</CardDescription>
               <CardTitle className="text-3xl">
@@ -430,7 +434,7 @@ const Dashboard = () => {
           open={isCreateClassroomModalOpen}
           onOpenChange={setIsCreateClassroomModalOpen}
         >
-          <DialogContent className="p-0 text-foreground">
+          <DialogContent className="bg-card border p-0 text-foreground">
             <DialogHeader>
               <DialogTitle>Create Classroom</DialogTitle>
               <DialogDescription>
@@ -474,15 +478,6 @@ const Dashboard = () => {
               </div>
 
               <DialogFooter className="p-0">
-                <DialogClose asChild>
-                  <Button
-                    type="button"
-                    className="reflective rounded-lg"
-                    disabled={isCreatingClassroom}
-                  >
-                    Cancel
-                  </Button>
-                </DialogClose>
                 <Button
                   type="submit"
                   className="reflective-primary rounded-lg"
@@ -490,6 +485,16 @@ const Dashboard = () => {
                 >
                   {isCreatingClassroom ? "Creating..." : "Create Classroom"}
                 </Button>
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="reflective rounded-lg"
+                    disabled={isCreatingClassroom}
+                  >
+                    Cancel
+                  </Button>
+                </DialogClose>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -497,7 +502,7 @@ const Dashboard = () => {
 
         <Dialog open={isPendingModalOpen} onOpenChange={setIsPendingModalOpen}>
           <DialogContent
-            className="max-h-[85vh] p-0"
+            className="max-h-[85vh] p-0 bg-card border"
             aria-label="Pending classroom requests"
           >
             <DialogHeader>

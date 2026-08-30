@@ -515,7 +515,7 @@ const ClassroomShow = () => {
                   return (
                     <article
                       key={student.$id}
-                      className="bg-background-lighter border-lg shadow rounded-lg p-4"
+                      className="border hover:bg-accent transition-colors duration-300 rounded-lg p-4"
                     >
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div className="space-y-1">
@@ -617,7 +617,7 @@ const ClassroomShow = () => {
             {acceptedStudents.map((student) => (
               <article
                 key={student.$id}
-                className="shadow bg-background-lighter rounded-lg p-4"
+                className="border hover:bg-accent transition-colors duration-300 rounded-lg p-4"
               >
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -770,77 +770,7 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
         </Card>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Issues Overview</CardTitle>
-            <CardDescription>
-              Severity breakdown from all analyzed student files.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="flex items-center justify-between">
-              <span className="text-muted-foreground">Total Issues</span>
-              <span className="font-medium">{stats.totalIssues}</span>
-            </p>
-            <p className="flex items-center justify-between">
-              <span className="text-muted-foreground">Warnings</span>
-              <span className="font-medium">{stats.warnings}</span>
-            </p>
-            <p className="flex items-center justify-between">
-              <span className="text-muted-foreground">Improvements</span>
-              <span className="font-medium">{stats.improvements}</span>
-            </p>
-            <p className="flex items-center justify-between">
-              <span className="text-muted-foreground">Info</span>
-              <span className="font-medium">{stats.infos}</span>
-            </p>
-            <p className="flex items-center justify-between">
-              <span className="text-muted-foreground">Estimated Lines</span>
-              <span className="font-medium">
-                {formatNumber(stats.estimatedTotalLines)}
-              </span>
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Issue Severity Chart</CardTitle>
-            <CardDescription>
-              Visual breakdown of warning, improvement, and info counts.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {severityData.length ? (
-              <ChartContainer
-                config={severityChartConfig}
-                className="mx-auto h-64"
-              >
-                <PieChart>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Pie
-                    data={severityData}
-                    dataKey="value"
-                    nameKey="label"
-                    innerRadius={55}
-                    outerRadius={90}
-                    stroke="#ffffff"
-                    strokeWidth={2}
-                  />
-                  <Legend />
-                </PieChart>
-              </ChartContainer>
-            ) : (
-              <p className="text-base text-muted-foreground">
-                No issue data available for charting.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Top Issues</CardTitle>
@@ -871,7 +801,7 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Top Issues Chart</CardTitle>
             <CardDescription>

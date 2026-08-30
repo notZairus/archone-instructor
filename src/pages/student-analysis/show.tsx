@@ -22,16 +22,25 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { getAnalysisById, getClassroomStudents, getUserById } from "@/lib/db";
 import { useClassroomContext } from "@/contexts/classroomContext";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import {
+  atomOneDark,
+  atomOneLight,
+} from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { useThemeContext } from "@/contexts/use-theme-context";
+import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
+import { Separator } from "@/components/ui/separator";
 
 type AnalysisIssue = {
   id?: string;
   title?: string;
+  code?: string;
   type?: string;
   line?: number;
+  message?: string;
+  suggestion?: string;
+  why?: string;
   functionName?: string;
   functionLines?: string;
-  suggestion?: string;
   advice?: string;
   principle?: string;
 };
@@ -64,102 +73,50 @@ type LocationState = {
   classroomId?: string;
 };
 
-const TYPE_DISPLAY_ORDER = [
-  "critical",
-  "error",
-  "warning",
-  "improvement",
-  "info",
-  "hint",
-  "style",
-  "unknown",
-];
+const fileTypes = {
+  js: "JavaScript",
+  py: "Python",
+  cs: "C#",
+};
+
+const TYPE_DISPLAY_ORDER = ["warning", "improvement", "info"];
 
 const ISSUE_PRINCIPLE_BY_TITLE = {
   "Unused Variable": "YAGNI (You Aren't Gonna Need It)",
   "Unused Function": "YAGNI (You Aren't Gonna Need It)",
-  "Use of var": "KISS (Keep It Simple, Stupid)",
-  "Poor Variable Naming": "KISS (Keep It Simple, Stupid)",
-  "Naming Convention": "KISS (Keep It Simple, Stupid)",
+  "Use of var": "KISS (Keep It Simple, Student)",
+  "Poor Variable Naming": "KISS (Keep It Simple, Student)",
+  "Naming Convention": "KISS (Keep It Simple, Student)",
   "Name Reuse": "DRY (Don't Repeat Yourself)",
   "Function Too Long": "Single Responsibility Principle",
-  "Too Many Parameters": "KISS (Keep It Simple, Stupid)",
+  "Too Many Parameters": "KISS (Keep It Simple, Student)",
   "High Complexity": "Separation of Concerns",
   "Duplicate Code Blocks": "DRY (Don't Repeat Yourself)",
-  "Deep Nesting": "KISS (Keep It Simple, Stupid)",
+  "Deep Nesting": "KISS (Keep It Simple, Student)",
   "TODO Comment": "N/A",
   "Commented-out Code": "YAGNI (You Aren't Gonna Need It)",
-  "Mixed Language Syntax": "KISS (Keep It Simple, Stupid)",
+  "Mixed Language Syntax": "KISS (Keep It Simple, Student)",
 
   // OOP mode
-  "No Constructor": "KISS (Keep It Simple, Stupid)",
+  "No Constructor": "KISS (Keep It Simple, Student)",
   "Too Many Dependencies": "Separation of Concerns",
   "Method Too Long": "Single Responsibility Principle",
   "Large Class / God Class": "Single Responsibility Principle",
-  "Hardcoded Values": "KISS (Keep It Simple, Stupid)",
+  "Hardcoded Values": "KISS (Keep It Simple, Student)",
   "Too Many Public Methods": "Separation of Concerns",
   "Duplicate Methods": "DRY (Don't Repeat Yourself)",
 };
 
-const BASE_ISSUE_PENALTIES = [
-  { title: "High Complexity", penalty: 2.0 },
-  { title: "Deep Nesting", penalty: 1.5 },
-  { title: "Function Too Long", penalty: 1.25 },
-  { title: "Too Many Parameters", penalty: 1.0 },
-  { title: "Name Reuse", penalty: 0.75 },
-  { title: "Duplicate Code Blocks", penalty: 1.0 },
-  { title: "Poor Variable Naming", penalty: 0.75 },
-  { title: "Naming Convention", penalty: 0.75 },
-  { title: "Commented-out Code", penalty: 0.5 },
-  { title: "TODO Comment", penalty: 0.2 },
-  {
-    title: "Method Too Long",
-    penalty: 1.0,
-  },
-  {
-    title: "No Constructor",
-    penalty: 0.75,
-  },
-  {
-    title: "Too Many Dependencies",
-    penalty: 1.25,
-  },
-  {
-    title: "Hardcoded Values",
-    penalty: 0.75,
-  },
-  {
-    title: "Too Many Public Methods",
-    penalty: 0.75,
-  },
-  {
-    title: "Duplicate Methods",
-    penalty: 1.0,
-  },
-  {
-    title: "Large Class / God Class",
-    penalty: 1.5,
-  },
-];
-
-const LANGUAGE_ISSUE_PENALTIES: Record<
-  string,
-  Array<{ title: string; penalty: number }>
-> = {
-  javascript: [{ title: "Use of var", penalty: 0.25 }],
-};
-
 const DEFAULT_PENALTY_BY_TYPE: Record<string, number> = {
-  critical: 2.5,
-  error: 2.0,
-  warning: 1.0,
-  improvement: 0.75,
-  info: 0.25,
+  warning: 10,
+  improvement: 5,
+  info: 2.5,
 };
 
-const DEFAULT_FALLBACK_PENALTY = 0.75;
+const DEFAULT_FALLBACK_PENALTY = 5;
 
 const StudentAnalysisShow = () => {
+  const { theme } = useThemeContext();
   const { analysisId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -171,8 +128,12 @@ const StudentAnalysisShow = () => {
   const [studentEmail, setStudentEmail] = useState(state.studentEmail || "");
   const [classroomName, setClassroomName] = useState(state.classroomName || "");
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<AnalysisIssue | null>(
+    null,
+  );
   const [selectedLineEnd, setSelectedLineEnd] = useState<number | null>(null);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -256,56 +217,27 @@ const StudentAnalysisShow = () => {
     });
   }, [analysis?.issues]);
 
-  const severityBreakdown = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const issue of sortedIssues) {
-      const type = String(issue.type || "unknown").toLowerCase();
-      counts.set(type, (counts.get(type) || 0) + 1);
-    }
-
-    const ordered = TYPE_DISPLAY_ORDER.map((type) => {
-      const value = counts.get(type);
-      if (!value) {
-        return null;
-      }
-
-      return `${type}: ${value}`;
-    }).filter(Boolean);
-
-    return ordered.length ? ordered.join(" | ") : "none";
-  }, [sortedIssues]);
-
-  const topIssueTitles = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const issue of sortedIssues) {
-      const title = issue.title || "Unknown Issue";
-      counts.set(title, (counts.get(title) || 0) + 1);
-    }
-
-    return Array.from(counts.entries())
-      .map(([title, count]) => ({ title, count }))
-      .sort(
-        (left, right) =>
-          right.count - left.count || left.title.localeCompare(right.title),
-      )
-      .slice(0, 5);
-  }, [sortedIssues]);
-
   const qualityScore = useMemo(() => {
     if (!analysis) {
       return 1;
     }
 
+    let initialScore = 100;
+
     if (!sortedIssues.length) {
-      return 10;
+      return initialScore;
     }
 
-    const language = getLanguageFromAnalysis(analysis);
-    const penaltyByTitle = getPenaltyByTitle(language);
-    return calculateScoreFromIssues(sortedIssues, penaltyByTitle);
-  }, [analysis, sortedIssues]);
+    sortedIssues.forEach((issue) => {
+      const type = issue.type;
+      const penalty =
+        DEFAULT_PENALTY_BY_TYPE[type || "improvement"] ||
+        DEFAULT_FALLBACK_PENALTY;
+      initialScore -= penalty;
+    });
 
-  const scoreBar = useMemo(() => buildScoreBar(qualityScore), [qualityScore]);
+    return Math.max(1, initialScore);
+  }, [analysis, sortedIssues]);
 
   const syntaxLanguage = useMemo(() => {
     if (!analysis) {
@@ -371,7 +303,7 @@ const StudentAnalysisShow = () => {
       { length: endLine - selectedLine + 1 },
       (_, index) => selectedLine + index,
     )
-      .map((lineNumber) => `${lineNumber}: ${codeLines[lineNumber - 1] || ""}`)
+      .map((lineNumber) => `${codeLines[lineNumber - 1] || ""}`)
       .join("\n");
   }, [codeLines, selectedLine, selectedLineEnd]);
 
@@ -426,6 +358,7 @@ const StudentAnalysisShow = () => {
   };
 
   const handleFeedbackSubmit = () => {
+    console.clear();
     if (!feedbackText.trim()) {
       return;
     }
@@ -437,7 +370,15 @@ const StudentAnalysisShow = () => {
       feedback: feedbackText.trim(),
     });
 
+    console.log(selectedSnippet);
+
     setIsFeedbackDialogOpen(false);
+  };
+
+  const handleSelectIssue = (issue: AnalysisIssue) => {
+    console.log(issue);
+    setSelectedIssue(issue);
+    setIsIssueDialogOpen(true);
   };
 
   if (isLoading) {
@@ -499,232 +440,405 @@ const StudentAnalysisShow = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6 md:p-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/student-analysis")}
-          >
-            Back
-          </Button>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Student Analysis Detail</CardTitle>
-            <CardDescription>
-              Full source code and analysis output for the selected file.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-2 text-sm md:grid-cols-2">
-            <p>
-              <span className="text-muted-foreground">Student:</span>{" "}
-              {studentName || "Unknown Student"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">File:</span>{" "}
-              {analysis.fileName}
-            </p>
-            <p>
-              <span className="text-muted-foreground">File type:</span>{" "}
-              {analysis.fileType}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Analysis date:</span>{" "}
-              {formatDateTime(analysis.createdAt)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Analysis Summary</CardTitle>
-            <CardDescription>
-              Derived from ArcHone issue output style.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="text-muted-foreground">Quality score:</span>{" "}
-              {qualityScore}/10 {scoreBar}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Total issues:</span>{" "}
-              {sortedIssues.length}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Severity breakdown:</span>{" "}
-              {severityBreakdown}
-            </p>
-            <div>
-              <p className="text-muted-foreground">Top issues:</p>
-              {topIssueTitles.length ? (
-                <ul className="list-disc pl-5">
-                  {topIssueTitles.map((item) => (
-                    <li key={item.title}>
-                      {item.title} ({item.count})
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No issues found.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Source Code</CardTitle>
-            <CardDescription>Code captured at analysis time.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-105 rounded-none border bg-black">
-              <div onMouseUp={handleCodeSelectionMouseUp}>
-                <SyntaxHighlighter
-                  language={syntaxLanguage}
-                  style={atomOneDark}
-                  customStyle={{
-                    margin: 0,
-                    minWidth: "100%",
-                    background: "transparent",
-                    padding: "1rem",
-                    fontSize: "0.75rem",
-                  }}
-                  showLineNumbers
-                  wrapLines
-                  wrapLongLines={false}
-                  lineProps={(lineNumber) => ({
-                    "data-line-number": lineNumber,
-                    onClick: () => openFeedbackDialog(lineNumber),
-                    onMouseUp: () => openFeedbackDialog(lineNumber),
-                    style:
-                      selectedLine === lineNumber
-                        ? {
-                            backgroundColor: "rgba(59, 130, 246, 0.22)",
-                            borderLeft: "2px solid rgb(59, 130, 246)",
-                            cursor: "pointer",
-                            display: "block",
-                          }
-                        : {
-                            cursor: "pointer",
-                            display: "block",
-                          },
-                  })}
+    <>
+      {/* Dialog for giving feedback */}
+      <Dialog
+        open={isFeedbackDialogOpen}
+        onOpenChange={setIsFeedbackDialogOpen}
+      >
+        <DialogContent className="bg-card border">
+          <DialogHeader>
+            <DialogTitle>Code feedback</DialogTitle>
+            <DialogDescription>
+              Leave a note for line {selectedLine}
+              {selectedLineEnd && selectedLineEnd !== selectedLine
+                ? ` through ${selectedLineEnd}`
+                : ""}
+              .
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 px-4 pb-2">
+            <div
+              className={`rounded-lg border border-border p-3 ${theme === "dark" ? "text-white bg-black" : "text-black bg-white"}`}
+            >
+              <p className="text-xs font-medium ">Selected code</p>
+              <ScrollArea className="h-56">
+                <pre
+                  className={`mt-2 whitespace-pre-wrap wrap-break-word text-xs leading-5`}
                 >
-                  {analysis.code || "No code snapshot available."}
-                </SyntaxHighlighter>
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        <Dialog
-          open={isFeedbackDialogOpen}
-          onOpenChange={setIsFeedbackDialogOpen}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Instructor feedback</DialogTitle>
-              <DialogDescription>
-                Leave a note for line {selectedLine}
-                {selectedLineEnd && selectedLineEnd !== selectedLine
-                  ? ` through ${selectedLineEnd}`
-                  : ""}
-                .
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-3 px-4 pb-2">
-              <div className="rounded-lg border border-border bg-black p-3">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Selected code
-                </p>
-                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap wrap-break-word text-xs leading-5 text-white">
-                  {selectedSnippet || "No code selected."}
+                  <SyntaxHighlighter
+                    language={syntaxLanguage}
+                    style={theme === "dark" ? atomOneDark : atomOneLight}
+                    customStyle={{
+                      margin: 0,
+                      minWidth: "100%",
+                      background: "transparent",
+                      padding: "1rem",
+                      fontSize: "0.75rem",
+                    }}
+                    wrapLines
+                    wrapLongLines={true}
+                  >
+                    {selectedSnippet || "No code selected."}
+                  </SyntaxHighlighter>
                 </pre>
-              </div>
-              <Input
-                autoFocus
-                value={feedbackText}
-                onChange={(event) => setFeedbackText(event.target.value)}
-                placeholder="Type your feedback here"
-              />
+              </ScrollArea>
             </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsFeedbackDialogOpen(false)}
+            <Input
+              autoFocus
+              value={feedbackText}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setFeedbackText(event.target.value)
+              }
+              placeholder="Type your feedback here"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsFeedbackDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleFeedbackSubmit}>Sennd Feedback</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for showing an issue */}
+      {selectedIssue && (
+        <Dialog open={isIssueDialogOpen} onOpenChange={setIsIssueDialogOpen}>
+          <DialogContent className="bg-card border py-12 ">
+            <div className="grid gap-3 px-4  pb-2">
+              <div
+                className={`rounded-lg border border-border p-3 ${theme === "dark" ? "text-white bg-black" : "text-black bg-white"}`}
               >
-                Cancel
-              </Button>
-              <Button onClick={handleFeedbackSubmit}>Save feedback</Button>
-            </DialogFooter>
+                <p className="text-xs font-medium">Code</p>
+                <ScrollArea className="h-56 overflow-auto">
+                  <div
+                    className={`mt-2 whitespace-pre-wrap wrap-break-word text-xs leading-5`}
+                  >
+                    <SyntaxHighlighter
+                      language={syntaxLanguage}
+                      style={theme === "dark" ? atomOneDark : atomOneLight}
+                      customStyle={{
+                        margin: 0,
+                        minWidth: "100%",
+                        background: "transparent",
+                        padding: "1rem",
+                        fontSize: "0.75rem",
+                      }}
+                      wrapLines
+                      wrapLongLines={true}
+                    >
+                      {selectedIssue?.code || "No code selected."}
+                    </SyntaxHighlighter>
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+            <div className="px-4 mt-2">
+              <DialogTitle className="mb-2">{selectedIssue?.title}</DialogTitle>
+              <DialogDescription>
+                Type:{" "}
+                {(selectedIssue?.type || ("" as string))
+                  .slice(0, 1)
+                  .toUpperCase() +
+                  (selectedIssue?.type || ("" as string)).slice(1)}
+                <br />
+                Found on line {selectedIssue?.line || "No location specified."}
+                <br />
+                Violated Principle: {getViolatedPrinciple(selectedIssue)}
+                <br />
+                {selectedIssue?.functionName
+                  ? `Function: ${selectedIssue.functionName}()`
+                  : ""}
+              </DialogDescription>
+              <Separator className="my-4" />
+              <div>
+                <p className="text-sm text-muted-foreground">Message: </p>
+                <p>{selectedIssue.message}</p>
+              </div>
+              <Separator className="my-4" />
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Why the issue occured:{" "}
+                </p>
+                <p>{selectedIssue.why}</p>
+              </div>
+              <Separator className="my-4" />
+              <div>
+                <p className="text-sm text-muted-foreground">Suggestion: </p>
+                <p>{selectedIssue.suggestion}</p>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Detailed Findings</CardTitle>
-            <CardDescription>
-              Ordered by severity then location, following CLI-style issue
-              prioritization.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {sortedIssues.length ? (
-              sortedIssues.map((issue, index) => (
-                <article
-                  key={issue.id || `${issue.title}-${index}`}
-                  className="rounded-none border p-4 text-sm"
-                >
-                  <p className="font-medium">
-                    {index + 1}. [
-                    {String(issue.type || "unknown").toUpperCase()}]{" "}
-                    {issue.title || "Bad Practice"}
-                  </p>
-                  {typeof issue.line === "number" ? (
-                    <p className="text-xs text-muted-foreground">
-                      Location: line {issue.line}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Location: unknown
-                    </p>
-                  )}
-                  {issue.functionName ? (
-                    <p className="text-xs text-muted-foreground">
-                      Function: {issue.functionName}()
-                    </p>
-                  ) : null}
-                  {issue.functionLines ? (
-                    <p className="text-xs text-muted-foreground">
-                      Lines: {issue.functionLines}
-                    </p>
-                  ) : null}
+      <div className="min-h-screen bg-background p-6 md:p-10">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/student-analysis")}
+            >
+              Back
+            </Button>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3 items-start">
+            <Card>
+              <CardHeader>
+                <CardTitle>Analysis Detail</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2 text-sm md:grid-cols-2 items-start">
+                <div className="p-2 border bg-card rounded-lg">
                   <p className="text-xs text-muted-foreground">
-                    Violated principle: {getViolatedPrinciple(issue)}
+                    Student Name:{" "}
                   </p>
-                  <p className="mt-2 text-xs">
-                    Advice:{" "}
-                    {issue.suggestion ||
-                      issue.advice ||
-                      "Review this finding and apply the appropriate refactor."}
+                  <p>{studentName}</p>
+                </div>
+                <div className="p-2 border bg-card rounded-lg">
+                  <p className="text-xs text-muted-foreground">File: </p>
+                  <p className="wrap-break-word">
+                    {analysis.fileName.replace("\\", "/").split("/").pop()}
                   </p>
-                </article>
-              ))
-            ) : (
-              <p className="rounded-none border border-dashed p-4 text-sm text-muted-foreground">
-                No issues found in this analysis.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+                <div className="p-2 border bg-card rounded-lg">
+                  <p className="text-xs text-muted-foreground">File type: </p>
+                  <p>
+                    {fileTypes[analysis.fileType as keyof typeof fileTypes]} (
+                    {analysis.fileType})
+                  </p>
+                </div>
+                <div className="p-2 border bg-card rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    Analysis date:{" "}
+                  </p>
+                  <p>{formatDateTime(analysis.createdAt)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Analysis Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4 overflow-hidden">
+                  <div className="w-1/3 p-2 relative">
+                    <CircularProgressbar
+                      value={qualityScore}
+                      styles={buildStyles({
+                        pathTransitionDuration: 0.5,
+                        pathColor: `#F56565`,
+                        textColor: "#f88",
+                        trailColor: "#d6d6d6",
+                        backgroundColor: "red",
+                      })}
+                    />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                      <p className="text-2xl font-bold text-center -mb-1">
+                        {qualityScore}
+                      </p>
+                      <p className="font-semibold text-lg text-center">/ 100</p>
+                    </div>
+                  </div>
+                  <div className="flex-1 flex items-center">
+                    {qualityScore >= 75 && (
+                      <div>
+                        <p className="text-lg font-medium text-green-600">
+                          Good Quality
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Your code is of mostly good, but there are some issues
+                          to improve.
+                        </p>
+                      </div>
+                    )}
+                    {qualityScore < 75 && qualityScore >= 50 && (
+                      <div>
+                        <p className="text-lg font-medium text-yellow-600">
+                          Fair Quality
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Your code is of fair quality, but there are several
+                          issues that need to be addressed.
+                        </p>
+                      </div>
+                    )}
+                    {qualityScore < 50 && (
+                      <div>
+                        <p className="text-lg font-medium text-red-600">
+                          Poor Quality
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Your code is of poor quality and needs significant
+                          improvements.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="w-full flex gap-4 items-center justify-between">
+                  <div
+                    className={`flex-1 border h-full rounded-lg p-2 bg-red-500/8`}
+                  >
+                    <p className="text-center font-semibold opacity-60 text-xs">
+                      Warnings
+                    </p>
+                    <p className="text-center text-lg mt-2 font-semibold opacity-80">
+                      {
+                        sortedIssues.filter((issue) => issue.type === "warning")
+                          .length
+                      }
+                    </p>
+                  </div>
+                  <div
+                    className={`flex-1 border h-full rounded-lg p-2 bg-yellow-500/8`}
+                  >
+                    <p className="text-center font-semibold opacity-60 text-xs">
+                      Improvements
+                    </p>
+                    <p className="text-center text-lg mt-2 font-semibold opacity-80">
+                      {
+                        sortedIssues.filter(
+                          (issue) => issue.type === "improvement",
+                        ).length
+                      }
+                    </p>
+                  </div>
+                  <div
+                    className={`flex-1 border h-full rounded-lg p-2 bg-blue-500/8`}
+                  >
+                    <p className="text-center font-semibold opacity-60 text-xs">
+                      Infos
+                    </p>
+                    <p className="text-center text-lg mt-2 font-semibold opacity-80">
+                      {
+                        sortedIssues.filter((issue) => issue.type === "info")
+                          .length
+                      }
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Detailed Findings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <ScrollArea className="h-64">
+                  <div className="space-y-4">
+                    {sortedIssues.length ? (
+                      sortedIssues.map((issue, index) => (
+                        <div
+                          key={issue.id || `${issue.title}-${index}`}
+                          className="bg-card border rounded-lg p-4 text-sm cursor-pointer hover:bg-accent transition-colors duration-300"
+                          onClick={() => handleSelectIssue(issue)}
+                        >
+                          <p className="font-medium">
+                            {index + 1}. {issue.title || "Bad Practice"}
+                          </p>
+                          {issue.type && (
+                            <p className="text-xs text-muted-foreground mb-2">
+                              {issue.type.slice(0, 1).toUpperCase() +
+                                issue.type.slice(1).toLowerCase()}
+                            </p>
+                          )}
+                          {typeof issue.line === "number" ? (
+                            <p className="text-xs text-muted-foreground">
+                              Location: line {issue.line}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              Location: unknown
+                            </p>
+                          )}
+                          {issue.functionName ? (
+                            <p className="text-xs text-muted-foreground">
+                              Function: {issue.functionName}()
+                            </p>
+                          ) : null}
+                          {issue.functionLines ? (
+                            <p className="text-xs text-muted-foreground">
+                              Lines: {issue.functionLines}
+                            </p>
+                          ) : null}
+                          <p className="text-xs text-muted-foreground">
+                            Violated principle: {getViolatedPrinciple(issue)}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="rounded-none border border-dashed p-4 text-sm text-muted-foreground">
+                        No issues found in this analysis.
+                      </p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Source Code</CardTitle>
+              <CardDescription>Code captured at analysis time.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea
+                className={`h-105 rounded-none border ${theme === "dark" ? "bg-black" : "bg-white"}`}
+              >
+                <div onMouseUp={handleCodeSelectionMouseUp}>
+                  <SyntaxHighlighter
+                    language={syntaxLanguage}
+                    style={theme === "dark" ? atomOneDark : atomOneLight}
+                    customStyle={{
+                      margin: 0,
+                      minWidth: "100%",
+                      background: "transparent",
+                      padding: "1rem",
+                      fontSize: "0.75rem",
+                    }}
+                    showLineNumbers
+                    wrapLines
+                    wrapLongLines={false}
+                    lineProps={(lineNumber: number) => ({
+                      "data-line-number": lineNumber,
+                      onClick: () => openFeedbackDialog(lineNumber),
+                      onMouseUp: () => openFeedbackDialog(lineNumber),
+                      style:
+                        selectedLine === lineNumber
+                          ? {
+                              backgroundColor: "rgba(59, 130, 246, 0.22)",
+                              borderLeft: "2px solid rgb(59, 130, 246)",
+                              cursor: "pointer",
+                              display: "block",
+                            }
+                          : {
+                              cursor: "pointer",
+                              display: "block",
+                            },
+                    })}
+                  >
+                    {analysis.code || "No code snapshot available."}
+                  </SyntaxHighlighter>
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -768,100 +882,6 @@ function getViolatedPrinciple(issue: AnalysisIssue) {
       issue.title as keyof typeof ISSUE_PRINCIPLE_BY_TITLE
     ] || "N/A"
   );
-}
-
-function getLanguageFromAnalysis(analysis: AnalysisDetail) {
-  const normalizedFileType = String(analysis.fileType || "").toLowerCase();
-
-  if (normalizedFileType === "js" || normalizedFileType === "javascript") {
-    return "javascript";
-  }
-
-  if (normalizedFileType === "py" || normalizedFileType === "python") {
-    return "python";
-  }
-
-  if (normalizedFileType === "cs" || normalizedFileType === "csharp") {
-    return "csharp";
-  }
-
-  const extension = analysis.fileName.split(".").pop()?.toLowerCase();
-
-  if (extension === "js") {
-    return "javascript";
-  }
-
-  if (extension === "py") {
-    return "python";
-  }
-
-  if (extension === "cs") {
-    return "csharp";
-  }
-
-  return "unknown";
-}
-
-function getPenaltyByTitle(language: string) {
-  const table: Record<string, number> = {};
-
-  for (const issue of BASE_ISSUE_PENALTIES) {
-    table[issue.title] = issue.penalty;
-  }
-
-  for (const issue of LANGUAGE_ISSUE_PENALTIES[language] || []) {
-    table[issue.title] = issue.penalty;
-  }
-
-  return table;
-}
-
-function getIssuePenalty(
-  issue: AnalysisIssue,
-  penaltyByTitle: Record<string, number>,
-) {
-  if (issue.title && penaltyByTitle[issue.title] != null) {
-    return penaltyByTitle[issue.title];
-  }
-
-  const normalizedType = String(issue.type || "").toLowerCase();
-  if (DEFAULT_PENALTY_BY_TYPE[normalizedType] != null) {
-    return DEFAULT_PENALTY_BY_TYPE[normalizedType];
-  }
-
-  return DEFAULT_FALLBACK_PENALTY;
-}
-
-function calculateScoreFromIssues(
-  issues: AnalysisIssue[],
-  penaltyByTitle: Record<string, number>,
-) {
-  const countsByTitle = new Map<string, number>();
-  const resolvedPenaltyByTitle = new Map<string, number>();
-
-  for (const issue of issues) {
-    const title = issue.title || "Other";
-    countsByTitle.set(title, (countsByTitle.get(title) || 0) + 1);
-
-    if (!resolvedPenaltyByTitle.has(title)) {
-      resolvedPenaltyByTitle.set(title, getIssuePenalty(issue, penaltyByTitle));
-    }
-  }
-
-  let totalPenalty = 0;
-  for (const [title, count] of countsByTitle.entries()) {
-    const basePenalty =
-      resolvedPenaltyByTitle.get(title) || DEFAULT_FALLBACK_PENALTY;
-    totalPenalty += basePenalty * (1 + Math.log2(count));
-  }
-
-  const score = Math.max(1, 10 - totalPenalty);
-  return Math.floor(score);
-}
-
-function buildScoreBar(score: number) {
-  const filled = Math.max(0, Math.min(10, Math.floor(score)));
-  return `[${"#".repeat(filled)}${"-".repeat(10 - filled)}]`;
 }
 
 export default StudentAnalysisShow;

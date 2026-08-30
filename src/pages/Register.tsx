@@ -7,6 +7,8 @@ import type { FormEvent } from "react";
 import { account, ID } from "@/lib/appwrite";
 import { createUser, getUserWithEmail } from "@/lib/db";
 import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
+import archone_logo from "@/assets/images/archone_logo.webp";
 
 type Role = "student" | "instructor";
 
@@ -144,7 +146,18 @@ const Register = () => {
 
   return (
     <div className="w-full min-h-screen bg-background flex items-center justify-center px-4 py-8">
-      <div className="bg-background-light shadow w-full max-w-md p-8 rounded-xl">
+      <div className="bg-card border w-full max-w-md p-8 pt-4 rounded-xl">
+        <div className="flex gap-4 items-center">
+          <div className="w-16 h-16">
+            <img
+              src={archone_logo}
+              alt="ArcHone Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <p className="font-bold text-3xl">ArcHone</p>
+        </div>
+        <Separator className="my-4" />
         <div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">

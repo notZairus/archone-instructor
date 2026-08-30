@@ -20,6 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClassroomContext } from "@/contexts/classroomContext";
 import { getClassroomStudents, getUserAnalyses } from "@/lib/db";
+import { Separator } from "@/components/ui/separator";
 
 type StudentMembership = {
   classroomId: string;
@@ -49,6 +50,12 @@ type StudentAnalysisRow = {
   fileName: string;
   fileType: string;
   analysisCreatedAt: string;
+};
+
+const fileTypes = {
+  js: "JavaScript",
+  py: "Python",
+  cs: "C#",
 };
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -218,6 +225,7 @@ const StudentAnalysis = () => {
                     setQuery(event.target.value);
                     setCurrentPage(1);
                   }}
+                  className="w-full bg-accent border"
                   placeholder="Search student, email, classroom, or file..."
                 />
               </div>
@@ -231,7 +239,10 @@ const StudentAnalysis = () => {
                     setCurrentPage(1);
                   }}
                 >
-                  <SelectTrigger id="analysis-page-size" className="w-full">
+                  <SelectTrigger
+                    id="analysis-page-size"
+                    className="w-full bg-accent border"
+                  >
                     <SelectValue placeholder="Rows per page" />
                   </SelectTrigger>
                   <SelectContent>
@@ -278,24 +289,15 @@ const StudentAnalysis = () => {
                 </Button>
               </div>
             ) : hasRows ? (
-              paginatedRows.map((row) => (
-                <article
-                  key={row.rowId}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() =>
-                    navigate(`/student-analysis/${row.analysisId}`, {
-                      state: {
-                        studentName: row.studentName,
-                        studentEmail: row.studentEmail,
-                        classroomName: row.classroomName,
-                        classroomId: row.classroomId,
-                      },
-                    })
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
+              paginatedRows.map((row) => {
+                console.log(row);
+
+                return (
+                  <article
+                    key={row.rowId}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
                       navigate(`/student-analysis/${row.analysisId}`, {
                         state: {
                           studentName: row.studentName,
@@ -303,48 +305,73 @@ const StudentAnalysis = () => {
                           classroomName: row.classroomName,
                           classroomId: row.classroomId,
                         },
-                      });
+                      })
                     }
-                  }}
-                  className="grid cursor-pointer gap-2  bg-background-lighter shadow rounded-lg p-4 transition-colors hover:bg-muted/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:grid-cols-2"
-                >
-                  <div className="min-w-0 space-y-1">
-                    <p className="font-medium wrap-break-word">
-                      {row.studentName}
-                    </p>
-                    <p className="text-xs text-muted-foreground break-all">
-                      {row.studentEmail}
-                    </p>
-                    <p className="text-xs text-muted-foreground wrap-break-word">
-                      Classroom: {row.classroomName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Status: {row.membershipStatus}
-                    </p>
-                  </div>
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        navigate(`/student-analysis/${row.analysisId}`, {
+                          state: {
+                            studentName: row.studentName,
+                            studentEmail: row.studentEmail,
+                            classroomName: row.classroomName,
+                            classroomId: row.classroomId,
+                          },
+                        });
+                      }
+                    }}
+                    className="flex flex-col sm:flex-row flex-wrap cursor-pointer gap-8  border hover:bg-accent transition-colors duration-300 rounded-lg p-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring "
+                  >
+                    <div className="min-w-0 space-y-1 flex-1">
+                      <p className="font-medium wrap-break-word text-lg">
+                        {row.studentName}
+                      </p>
+                      <p className="text-md text-muted-foreground break-all ">
+                        {row.studentEmail}
+                      </p>
 
-                  <div className="min-w-0 space-y-1 text-xs text-muted-foreground">
-                    <p>
-                      File:{" "}
-                      <span className="text-foreground break-all">
-                        {row.fileName}
-                      </span>
-                    </p>
-                    <p>
-                      Type:{" "}
-                      <span className="text-foreground wrap-break-word">
-                        {row.fileType}
-                      </span>
-                    </p>
-                    <p>
-                      Analysis date:{" "}
-                      <span className="text-foreground">
-                        {formatDateTime(row.analysisCreatedAt)}
-                      </span>
-                    </p>
-                  </div>
-                </article>
-              ))
+                      <Separator className="my-2" />
+
+                      <p className="text-xs text-muted-foreground wrap-break-word">
+                        Student of:{" "}
+                        <span className="font-semibold">
+                          {row.classroomName}
+                        </span>
+                      </p>
+                    </div>
+
+                    <Separator
+                      orientation="vertical"
+                      className="hidden sm:block"
+                    />
+
+                    <Separator className="block sm:hidden" />
+
+                    <div className="min-w-0 space-y-1 text-xs text-muted-foreground flex-1">
+                      <div className="text-[1.05rem] flex sm:items-center w-full flex-col sm:flex-row">
+                        <span className="w-32">File Name:</span>
+                        <span className="text-foreground break-all">
+                          {row.fileName.replace("\\", "/").split("/").pop()}
+                        </span>
+                      </div>
+                      <div className="text-[1.05rem] flex sm:items-center w-full flex-col sm:flex-row">
+                        <span className="w-32">File Type:</span>
+                        <span className="text-foreground wrap-break-word">
+                          {fileTypes[row.fileType as keyof typeof fileTypes] ||
+                            row.fileType}{" "}
+                          ({row.fileType})
+                        </span>
+                      </div>
+                      <div className="text-[1.05rem] flex sm:items-center w-full flex-col sm:flex-row">
+                        <span className="w-32">Analyzed: </span>
+                        <span className="text-foreground">
+                          {formatDateTime(row.analysisCreatedAt)}
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })
             ) : (
               <p className="rounded-none p-4 text-sm text-muted-foreground">
                 {query.trim()

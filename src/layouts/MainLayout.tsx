@@ -26,6 +26,7 @@ import { account } from "@/lib/appwrite";
 import { toast } from "sonner";
 import { useThemeContext } from "@/contexts/use-theme-context";
 import { Sun, Moon } from "lucide-react";
+import ArchoneLogo from "@/assets/images/archone_logo.webp";
 
 const menuItems = [
   {
@@ -70,12 +71,14 @@ const MainLayout = () => {
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <Sidebar variant="floating">
-          <SidebarHeader className="rounded-xl px-8 py-6 m-2 shadow-md bg-background-lightest">
-            <div className="text-center">
-              <p className="text-xs text-sidebar-foreground/70">Archone</p>
-              <h2 className="font-semibold">Instructor Portal</h2>
-            </div>
+        <Sidebar>
+          <SidebarHeader className="rounded-xl px-8 py-6 m-2">
+            <img
+              src={ArchoneLogo}
+              alt="Archone Logo"
+              className="mx-auto h-20 w-20"
+            />
+            <div className="text-center text-2xl">ArcHone</div>
           </SidebarHeader>
 
           <SidebarContent>
@@ -90,6 +93,7 @@ const MainLayout = () => {
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
+                        className="shadow-none"
                         asChild
                         isActive={item.match(location.pathname)}
                         tooltip={item.title}
@@ -110,7 +114,7 @@ const MainLayout = () => {
             <button
               type="button"
               onClick={() => setShowLogout((current) => !current)}
-              className="w-full bg-background-lightest shadow-md rounded-xl px-2 py-3 text-left text-xs"
+              className="w-full rounded-lg  border border-sidebar-border transition-all hover:bg-sidebar-accent px-2 py-3 text-left text-xs"
             >
               Signed in as <br /> {authUser?.name || "Instructor"}
             </button>
@@ -119,7 +123,7 @@ const MainLayout = () => {
               <Button
                 type="button"
                 size="sm"
-                className="w-full bg-background-lightest text-foreground shadow rounded-lg"
+                className="w-full"
                 onClick={handleLogout}
               >
                 Logout
@@ -129,8 +133,8 @@ const MainLayout = () => {
         </Sidebar>
 
         <SidebarInset>
-          <div className="pt-4 sm:px-8 sticky top-0 z-10">
-            <header className="rounded-xl bg-background-lighter top-0 z-10 flex h-14 items-center justify-between gap-2 shadow-lg px-4">
+          <div className="pt-4 sm:px-4 bg-background/80 backdrop-blur-[2px] sticky top-0 z-10">
+            <header className=" top-0 z-10 flex h-14 items-center justify-between px-4">
               <SidebarTrigger className="bg-transparent text-foreground cursor-pointer" />
               <div
                 className="cursor-pointer"

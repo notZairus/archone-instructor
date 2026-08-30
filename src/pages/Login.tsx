@@ -1,4 +1,3 @@
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { account } from "@/lib/appwrite";
@@ -8,6 +7,8 @@ import { getUserWithEmail } from "@/lib/db";
 import InputField from "@/components/InputField";
 import { Link } from "react-router";
 import type { ChangeEvent } from "react";
+import { Separator } from "@/components/ui/separator";
+import archone_logo from "@/assets/images/archone_logo.webp";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -57,7 +58,18 @@ const Login = () => {
 
   return (
     <div className="w-full min-h-screen bg-background flex items-center justify-center flex-col space-y-8">
-      <div className="w-full bg-background-light shadow max-w-md p-8 rounded-xl">
+      <div className="w-full bg-card border max-w-md p-8 pt-4 rounded-xl">
+        <div className="flex gap-4 items-center">
+          <div className="w-16 h-16">
+            <img
+              src={archone_logo}
+              alt="ArcHone Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <p className="font-bold text-3xl">ArcHone</p>
+        </div>
+        <Separator className="my-4" />
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <InputField

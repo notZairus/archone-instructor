@@ -129,7 +129,7 @@ const Classrooms = () => {
           </div>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-3">
+        <section className="grid gap-4 lg:grid-cols-3 sm:items-start">
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle>Create Classroom</CardTitle>
@@ -200,43 +200,41 @@ const Classrooms = () => {
                   filteredClassrooms.map((classroom) => (
                     <>
                       <Card
-                        className="p-4 shadow-md bg-background-lighter"
+                        className="p-4 bg-card hover:bg-accent transition-colors duration-300"
                         key={classroom.$id}
                       >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className="space-y-1">
-                            <Link
-                              to={`/classrooms/${classroom.$id}`}
-                              className="hover:underline"
-                            >
+                        <Link to={`/classrooms/${classroom.$id}`}>
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-1">
                               <h3 className="font-medium">{classroom.name}</h3>
                               <CardTitle className="text-xs text-muted-foreground">
                                 {classroom.description}
                               </CardTitle>
-                            </Link>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleCopyJoinCode(classroom.code);
+                                }}
+                              >
+                                Copy Join Code
+                              </Button>
+                            </div>
                           </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleCopyJoinCode(classroom.code)}
-                            >
-                              Copy Join Code
-                            </Button>
+                          <div className="grid gap-2 sm:grid-cols-2  text-xs mt-2">
+                            <p>
+                              Join Code:{" "}
+                              <span className="font-medium">
+                                {classroom.code}
+                              </span>
+                            </p>
                           </div>
-                        </div>
-
-                        <Separator />
-
-                        <div className="grid gap-2 sm:grid-cols-2  text-xs">
-                          <p>
-                            Join Code:{" "}
-                            <span className="font-medium">
-                              {classroom.code}
-                            </span>
-                          </p>
-                        </div>
+                        </Link>
                       </Card>
                     </>
                   ))
