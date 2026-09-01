@@ -32,17 +32,20 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart";
-import { Legend } from "recharts";
+
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Pie,
-  PieChart,
   XAxis,
   YAxis,
+  Pie,
+  PieChart,
 } from "recharts";
+import type { Student } from "@/types/global";
 
 const ClassroomShow = () => {
   const { id } = useParams();
@@ -92,10 +95,12 @@ const ClassroomShow = () => {
     () => students.filter((student) => student.accepted),
     [students],
   );
+
   const pendingStudents = useMemo(
     () => students.filter((student) => !student.accepted),
     [students],
   );
+
   const acceptedStudentIdsKey = useMemo(
     () =>
       acceptedStudents
@@ -104,6 +109,7 @@ const ClassroomShow = () => {
         .join("|"),
     [acceptedStudents],
   );
+
   const acceptedStudentsById = useMemo(
     () => new Map(acceptedStudents.map((student) => [student.$id, student])),
     [acceptedStudents],
@@ -128,6 +134,7 @@ const ClassroomShow = () => {
 
         const combinedAnalyses = analysesByStudent.flat() as AnalysisRecord[];
         const analytics = buildStudentAnalytics(combinedAnalyses);
+
         setClassStats(analytics);
       } catch {
         setClassStatsError("Could not load class stats right now.");
@@ -210,6 +217,8 @@ const ClassroomShow = () => {
   useEffect(() => {
     void fetchNeedsAttention();
   }, [fetchNeedsAttention]);
+
+  console.log(classStats?.topIssueTitles);
 
   const handleRefreshClassStats = async () => {
     if (!id) return;
@@ -368,6 +377,33 @@ const ClassroomShow = () => {
     );
   }
 
+  const chartConfig: any = {
+    percentage: {
+      label: "Percentage",
+    },
+  };
+
+  const chartData: any[] = [];
+
+  classStats &&
+    classStats.topIssueTitles.forEach((issue, index) => {
+      chartConfig[issue.title as string] = {
+        label: issue.title,
+        color: `var(--chart-${index + 1})`,
+      };
+
+      chartData.push({
+        issue: issue.title,
+        percentage: issue.percent,
+        fill: `var(--chart-${index + 1})`,
+      });
+    });
+
+  console.clear();
+
+  console.log(chartConfig);
+  console.log(chartData);
+
   return (
     <div className="min-h-screen bg-background p-6 md:p-10">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -447,33 +483,62 @@ const ClassroomShow = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Most Frequent Class Issues</CardTitle>
+                    <CardTitle>Frequently Encountered Issues</CardTitle>
                     <CardDescription>
-                      Patterns your class encounters most often.
+                      Most common issue patterns across all accepted students of
+                      this classroom.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    {classStats.topIssueTitles.length ? (
-                      <div className="space-y-2">
-                        {classStats.topIssueTitles.map((issue, index) => (
-                          <p
-                            key={issue.title}
-                            className="flex items-center justify-between"
-                          >
-                            <span>
-                              {index + 1}. {issue.title}
-                            </span>
-                            <span className="font-medium">
-                              {issue.percent}%
-                            </span>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="md:col-span-2">
+                      <CardContent className="max-h-120">
+                        <ChartContainer
+                          config={chartConfig satisfies ChartConfig}
+                          className="mx-auto aspect-square h-full"
+                        >
+                          <PieChart>
+                            <ChartTooltip
+                              cursor={false}
+                              content={<ChartTooltipContent hideLabel />}
+                            />
+                            <Pie
+                              data={chartData}
+                              dataKey="percentage"
+                              nameKey="issue"
+                            />
+                            <ChartLegend
+                              content={<ChartLegendContent nameKey="issue" />}
+                              className=" flex-wrap gap-2 hidden md:flex"
+                            />
+                          </PieChart>
+                        </ChartContainer>
+                      </CardContent>
+                    </Card>
+                    <Card className="md:col-span-1 border-none">
+                      <CardContent className=" border-0">
+                        {classStats.topIssueTitles.length ? (
+                          <div className="space-y-2">
+                            {classStats.topIssueTitles.map((issue, index) => (
+                              <p
+                                key={issue.title}
+                                className="flex items-center justify-between"
+                              >
+                                <span>
+                                  {index + 1}. {issue.title}
+                                </span>
+                                <span className="font-medium">
+                                  {issue.percent.toFixed(2)}%
+                                </span>
+                              </p>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No recurring issue patterns yet.
                           </p>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No recurring issue patterns yet.
-                      </p>
-                    )}
+                        )}
+                      </CardContent>
+                    </Card>
                   </CardContent>
                 </Card>
               </>
@@ -697,27 +762,6 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
     );
   }
 
-  const severityData = [
-    {
-      key: "warnings",
-      label: "Warnings",
-      value: stats.warnings,
-      fill: "red",
-    },
-    {
-      key: "improvements",
-      label: "Improvements",
-      value: stats.improvements,
-      fill: "orange",
-    },
-    {
-      key: "infos",
-      label: "Info",
-      value: stats.infos,
-      fill: "blue",
-    },
-  ].filter((item) => item.value > 0);
-
   const topIssueChartData = stats.topIssueTitles.map((issue) => ({
     issue:
       issue.title.length > 30 ? `${issue.title.slice(0, 30)}...` : issue.title,
@@ -725,22 +769,7 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
     percent: issue.percent,
   }));
 
-  const severityChartConfig = {
-    warnings: {
-      label: "Warnings",
-      color: "#000000",
-    },
-    improvements: {
-      label: "Improvements",
-      color: "#111111",
-    },
-    infos: {
-      label: "Info",
-      color: "#1a1a1a",
-    },
-  } satisfies ChartConfig;
-
-  const topIssuesChartConfig = {
+  const studentTopIssuesChartConfig = {
     percent: {
       label: "Percentage",
       color: "#000000",
@@ -789,7 +818,9 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
                     <span className="font-bold ">
                       {index + 1}. {issue.title}
                     </span>
-                    <span className="font-medium">{issue.percent}%</span>
+                    <span className="font-medium">
+                      {issue.percent.toFixed(2)}%
+                    </span>
                   </p>
                 ))}
               </div>
@@ -808,9 +839,9 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
               Highest-frequency issue patterns by percentage.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2">
             {topIssueChartData.length ? (
-              <ChartContainer config={topIssuesChartConfig} className="h-64">
+              <ChartContainer config={studentTopIssuesChartConfig}>
                 <BarChart
                   data={topIssueChartData}
                   margin={{ top: 8, right: 12, left: 12, bottom: 8 }}
@@ -822,19 +853,12 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
                     content={
                       <ChartTooltipContent
                         formatter={(_, __, item) => [
-                          `${item.payload.percent}%`,
-                          item.payload.fullIssue,
+                          `${item.payload.percent.toFixed(2)}%`,
                         ]}
                       />
                     }
                   />
-                  <Bar
-                    dataKey="percent"
-                    fill="#8b5cf6"
-                    stroke="#ffffff"
-                    strokeWidth={1}
-                    radius={0}
-                  />
+                  <Bar dataKey="percent" fill="#f56565" radius={0} />
                 </BarChart>
               </ChartContainer>
             ) : (
@@ -848,14 +872,16 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
 
       <Separator />
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2 items-start">
         <Card>
           <CardHeader>
             <CardTitle>Progress Insights</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {stats.insights.map((insight) => (
-              <p key={insight}>{insight}</p>
+              <p key={insight} className="text-md">
+                -- {insight}
+              </p>
             ))}
           </CardContent>
         </Card>
@@ -865,9 +891,23 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
             <CardTitle>Recommendations</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {stats.recommendations.map((recommendation) => (
-              <p key={recommendation}>{recommendation}</p>
-            ))}
+            <ScrollArea className="h-80">
+              <div className="space-y-2">
+                {stats.recommendations.map((recommendation) => (
+                  <div
+                    key={recommendation}
+                    className="border bg-accent p-4 rounded-md flex gap-4 "
+                  >
+                    <p className="w-48 text-[1.05rem]">
+                      {recommendation.split(":")[0]}
+                    </p>
+                    <p className="text-[1.05rem] flex-1">
+                      {recommendation.split(":")[1]}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>
@@ -937,10 +977,10 @@ function buildStudentAnalytics(
   );
 
   const trend = computeTrend(datedAnalyses);
+
   const topIssueTitles = toSortedIssuePercentages(
     issueTitleCounts,
     totalIssues,
-    5,
   );
 
   return {
@@ -1114,7 +1154,7 @@ function toSortedIssuePercentages(
     .map(([title, count]) => ({
       title,
       count,
-      percent: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0,
+      percent: totalCount > 0 ? (count / totalCount) * 100 : 0,
     }))
     .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title))
     .slice(0, limit);
@@ -1188,7 +1228,7 @@ function buildRecommendations(topIssueTitles: TopIssue[]) {
 
   const recommendations = topIssueTitles.map(
     (issue) =>
-      `${issue.title} (${issue.percent}%): ${
+      `${issue.title} (${issue.percent.toFixed(2)}%): ${
         recommendationsByTitle[issue.title] ||
         "Review this issue pattern and apply the suggested fix consistently."
       }`,

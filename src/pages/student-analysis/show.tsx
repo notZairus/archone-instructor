@@ -29,42 +29,14 @@ import {
 import { useThemeContext } from "@/contexts/use-theme-context";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import { Separator } from "@/components/ui/separator";
-
-type AnalysisIssue = {
-  id?: string;
-  title?: string;
-  code?: string;
-  type?: string;
-  line?: number;
-  message?: string;
-  suggestion?: string;
-  why?: string;
-  functionName?: string;
-  functionLines?: string;
-  advice?: string;
-  principle?: string;
-};
-
-type AnalysisDetail = {
-  id: string;
-  userId: string;
-  fileName: string;
-  fileType: string;
-  code: string;
-  createdAt: string;
-  updatedAt?: string;
-  comments?: Array<{ id?: string; line?: number; text?: string }>;
-  functions?: Array<{
-    id?: string;
-    name?: string;
-    complexity?: number;
-    maxNesting?: number;
-    lines?: number;
-    line?: number;
-  }>;
-  variables?: Array<{ id?: string; name?: string; line?: number }>;
-  issues?: AnalysisIssue[];
-};
+import type { Analysis, Issue, Classroom } from "@/types/global";
+import {
+  TYPE_DISPLAY_ORDER,
+  ISSUE_PRINCIPLE_BY_TITLE,
+  DEFAULT_PENALTY_BY_TYPE,
+  DEFAULT_FALLBACK_PENALTY,
+} from "@/constants/configs";
+import CircularBar from "@/components/CircularBar";
 
 type LocationState = {
   studentName?: string;
@@ -79,43 +51,7 @@ const fileTypes = {
   cs: "C#",
 };
 
-const TYPE_DISPLAY_ORDER = ["warning", "improvement", "info"];
-
-const ISSUE_PRINCIPLE_BY_TITLE = {
-  "Unused Variable": "YAGNI (You Aren't Gonna Need It)",
-  "Unused Function": "YAGNI (You Aren't Gonna Need It)",
-  "Use of var": "KISS (Keep It Simple, Student)",
-  "Poor Variable Naming": "KISS (Keep It Simple, Student)",
-  "Naming Convention": "KISS (Keep It Simple, Student)",
-  "Name Reuse": "DRY (Don't Repeat Yourself)",
-  "Function Too Long": "Single Responsibility Principle",
-  "Too Many Parameters": "KISS (Keep It Simple, Student)",
-  "High Complexity": "Separation of Concerns",
-  "Duplicate Code Blocks": "DRY (Don't Repeat Yourself)",
-  "Deep Nesting": "KISS (Keep It Simple, Student)",
-  "TODO Comment": "N/A",
-  "Commented-out Code": "YAGNI (You Aren't Gonna Need It)",
-  "Mixed Language Syntax": "KISS (Keep It Simple, Student)",
-
-  // OOP mode
-  "No Constructor": "KISS (Keep It Simple, Student)",
-  "Too Many Dependencies": "Separation of Concerns",
-  "Method Too Long": "Single Responsibility Principle",
-  "Large Class / God Class": "Single Responsibility Principle",
-  "Hardcoded Values": "KISS (Keep It Simple, Student)",
-  "Too Many Public Methods": "Separation of Concerns",
-  "Duplicate Methods": "DRY (Don't Repeat Yourself)",
-};
-
-const DEFAULT_PENALTY_BY_TYPE: Record<string, number> = {
-  warning: 10,
-  improvement: 5,
-  info: 2.5,
-};
-
-const DEFAULT_FALLBACK_PENALTY = 5;
-
-const StudentAnalysisShow = () => {
+export default function StudentAnalysisShow() {
   const { theme } = useThemeContext();
   const { analysisId } = useParams();
   const navigate = useNavigate();
@@ -123,14 +59,12 @@ const StudentAnalysisShow = () => {
   const state = (location.state || {}) as LocationState;
   const { classrooms } = useClassroomContext();
 
-  const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [studentName, setStudentName] = useState(state.studentName || "");
   const [studentEmail, setStudentEmail] = useState(state.studentEmail || "");
   const [classroomName, setClassroomName] = useState(state.classroomName || "");
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
-  const [selectedIssue, setSelectedIssue] = useState<AnalysisIssue | null>(
-    null,
-  );
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [selectedLineEnd, setSelectedLineEnd] = useState<number | null>(null);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
@@ -154,9 +88,7 @@ const StudentAnalysisShow = () => {
       setError(null);
 
       try {
-        const detail = (await getAnalysisById(
-          analysisId,
-        )) as AnalysisDetail | null;
+        const detail = (await getAnalysisById(analysisId)) as Analysis | null;
 
         if (!detail) {
           setAnalysis(null);
@@ -375,7 +307,7 @@ const StudentAnalysisShow = () => {
     setIsFeedbackDialogOpen(false);
   };
 
-  const handleSelectIssue = (issue: AnalysisIssue) => {
+  const handleSelectIssue = (issue: Issue) => {
     console.log(issue);
     setSelectedIssue(issue);
     setIsIssueDialogOpen(true);
@@ -509,7 +441,7 @@ const StudentAnalysisShow = () => {
       {/* Dialog for showing an issue */}
       {selectedIssue && (
         <Dialog open={isIssueDialogOpen} onOpenChange={setIsIssueDialogOpen}>
-          <DialogContent className="bg-card border py-12 ">
+          <DialogContent className="bg-card border py-12">
             <div className="grid gap-3 px-4  pb-2">
               <div
                 className={`rounded-lg border border-border p-3 ${theme === "dark" ? "text-white bg-black" : "text-black bg-white"}`}
@@ -628,24 +560,9 @@ const StudentAnalysisShow = () => {
                 <CardTitle>Analysis Summary</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-4 overflow-hidden">
-                  <div className="w-1/3 p-2 relative">
-                    <CircularProgressbar
-                      value={qualityScore}
-                      styles={buildStyles({
-                        pathTransitionDuration: 0.5,
-                        pathColor: `#F56565`,
-                        textColor: "#f88",
-                        trailColor: "#d6d6d6",
-                        backgroundColor: "red",
-                      })}
-                    />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                      <p className="text-2xl font-bold text-center -mb-1">
-                        {qualityScore}
-                      </p>
-                      <p className="font-semibold text-lg text-center">/ 100</p>
-                    </div>
+                <div className="flex gap-4">
+                  <div className="w-1/3">
+                    <CircularBar score={qualityScore} />
                   </div>
                   <div className="flex-1 flex items-center">
                     {qualityScore >= 75 && (
@@ -840,7 +757,9 @@ const StudentAnalysisShow = () => {
       </div>
     </>
   );
-};
+}
+
+// HELPERS
 
 async function findClassroomNameForStudent(
   classrooms: Classroom[],
@@ -872,7 +791,7 @@ function formatDateTime(value: string) {
   }).format(timestamp);
 }
 
-function getViolatedPrinciple(issue: AnalysisIssue) {
+function getViolatedPrinciple(issue: Issue) {
   if (issue.principle) {
     return issue.principle;
   }
@@ -883,5 +802,3 @@ function getViolatedPrinciple(issue: AnalysisIssue) {
     ] || "N/A"
   );
 }
-
-export default StudentAnalysisShow;

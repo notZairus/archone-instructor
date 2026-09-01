@@ -12,7 +12,8 @@ import Verify from "./pages/Verify";
 
 import Dashboard from "./pages/Dashboard";
 
-import StudentAnalysis from "./pages/student-analysis/index";
+import StudentAnalysisTest from "./pages/student-analysis/test_index";
+import StudentAnalysis from "./pages/student-analysis/test_index";
 import StudentAnalysisShow from "./pages/student-analysis/show";
 
 import Classrooms from "./pages/classrooms/index";
@@ -33,6 +34,7 @@ function App() {
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/student-analysis" element={<StudentAnalysis />} />
+
           <Route
             path="/student-analysis/:analysisId"
             element={<StudentAnalysisShow />}

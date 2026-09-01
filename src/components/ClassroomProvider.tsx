@@ -3,6 +3,7 @@ import { classroomContext } from "../contexts/classroomContext";
 import { useAuthContext } from "@/contexts/authContext";
 import { tablesDB } from "@/lib/appwrite";
 import { Query } from "appwrite";
+import type { Classroom } from "@/types/global";
 
 const ClassroomProvider = ({ children }: { children: React.ReactNode }) => {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);

@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useClassroomContext } from "@/contexts/classroomContext";
 import { getClassroomStudents, getUserAnalyses } from "@/lib/db";
 import { Separator } from "@/components/ui/separator";
+import { DEFAULT_PAGE_SIZE, FILE_TYPES } from "@/constants/configs";
 
 type StudentMembership = {
   classroomId: string;
@@ -51,14 +52,6 @@ type StudentAnalysisRow = {
   fileType: string;
   analysisCreatedAt: string;
 };
-
-const fileTypes = {
-  js: "JavaScript",
-  py: "Python",
-  cs: "C#",
-};
-
-const DEFAULT_PAGE_SIZE = 10;
 
 const StudentAnalysis = () => {
   const navigate = useNavigate();
@@ -357,8 +350,9 @@ const StudentAnalysis = () => {
                       <div className="text-[1.05rem] flex sm:items-center w-full flex-col sm:flex-row">
                         <span className="w-32">File Type:</span>
                         <span className="text-foreground wrap-break-word">
-                          {fileTypes[row.fileType as keyof typeof fileTypes] ||
-                            row.fileType}{" "}
+                          {FILE_TYPES[
+                            row.fileType as keyof typeof FILE_TYPES
+                          ] || row.fileType}{" "}
                           ({row.fileType})
                         </span>
                       </div>

@@ -1,5 +1,6 @@
 import { tablesDB } from "./appwrite";
 import { Query, ID } from "appwrite";
+import type { Student } from "@/types/global";
 
 type UserRole = "student" | "instructor";
 
@@ -176,6 +177,8 @@ export const getUserAnalyses = async (userId: string) => {
     id: analysis.$id,
     fileName: analysis.fileName,
     fileType: analysis.fileType,
+    userId: analysis.userId,
+    code: analysis.code,
     createdAt: analysis.$createdAt,
     updatedAt: analysis.$updatedAt,
   }));
