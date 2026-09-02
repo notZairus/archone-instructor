@@ -204,295 +204,128 @@ const StudentAnalysis = () => {
           </CardContent>
         </Card>
 
-        {!query && (
-          <Card>
-            <CardHeader className="flex justify-between">
-              <div>
-                <CardTitle>Analysis Records</CardTitle>
-                <CardDescription>
-                  Newest analysis records are shown first.
-                </CardDescription>
+        <Card>
+          <CardHeader className="flex justify-between">
+            <div>
+              <CardTitle>Analysis Records</CardTitle>
+              <CardDescription>
+                Newest analysis records are shown first.
+              </CardDescription>
+            </div>
+            <div>
+              <Button
+                variant={"outline"}
+                onClick={() => {
+                  setCurrentPage(1);
+                  setSelected({
+                    student: selected.fileAnalyses ? selected.student : null,
+                    fileAnalyses: null,
+                  });
+                }}
+                disabled={!selected.student && !selected.fileAnalyses}
+              >
+                Back
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isLoading && (
+              <div className="flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">Loading...</p>
               </div>
-              <div>
-                <Button
-                  variant={"outline"}
-                  onClick={() => {
-                    setCurrentPage(1);
-                    setSelected({
-                      student: selected.fileAnalyses ? selected.student : null,
-                      fileAnalyses: null,
-                    });
-                  }}
-                  disabled={!selected.student && !selected.fileAnalyses}
-                >
-                  Back
-                </Button>
+            )}
+
+            {error && (
+              <div className="flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">{error}</p>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {isLoading && (
-                <div className="flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">Loading...</p>
-                </div>
-              )}
+            )}
 
-              {error && (
-                <div className="flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">{error}</p>
-                </div>
-              )}
+            {students.length === 0 && !isLoading && !error && (
+              <div className="flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">
+                  No results found.
+                </p>
+              </div>
+            )}
 
-              {students.length === 0 && !isLoading && !error && (
-                <div className="flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">
-                    No results found.
-                  </p>
-                </div>
-              )}
+            {students.length > 0 &&
+              !selected.student &&
+              applyPagination(
+                filterStudents(students, query),
+                currentPage,
+                pageSize,
+              ).map((student) => (
+                <>
+                  <div
+                    key={student.$id}
+                    className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
+                    onClick={() => {
+                      console.log(student);
+                      handleSelectStudent(student);
+                    }}
+                  >
+                    <div className="flex-1">
+                      <p>{student.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {student.email}
+                      </p>
+                    </div>
 
-              {students.length > 0 &&
-                !selected.student &&
-                applyPagination(students, currentPage, pageSize).map(
-                  (student) => (
-                    <>
-                      <div
-                        key={student.$id}
-                        className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
-                        onClick={() => {
-                          console.log(student);
-                          handleSelectStudent(student);
-                        }}
-                      >
-                        <div className="flex-1">
-                          <p>{student.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {student.email}
-                          </p>
-                        </div>
+                    <Separator orientation="vertical" />
 
-                        <Separator orientation="vertical" />
+                    <div className="flex-1 ">
+                      <p className="text-sm text-muted-foreground">
+                        Student from:
+                      </p>
+                      <p>{student.classrooms.join(" & ")}</p>
+                    </div>
 
-                        <div className="flex-1 ">
-                          <p className="text-sm text-muted-foreground">
-                            Student from:
-                          </p>
-                          <p>{student.classrooms.join(" & ")}</p>
-                        </div>
+                    <Separator orientation="vertical" />
 
-                        <Separator orientation="vertical" />
+                    <div className="flex-1 ">
+                      <p className="text-sm text-muted-foreground">Count:</p>
+                      <p>{student.analyses.length} Analysis</p>
+                    </div>
+                  </div>
+                </>
+              ))}
 
-                        <div className="flex-1 ">
-                          <p className="text-sm text-muted-foreground">
-                            Count:
-                          </p>
-                          <p>{student.analyses.length} Analysis</p>
-                        </div>
-                      </div>
-                    </>
-                  ),
-                )}
-
-              {selected.student &&
-                !selected.fileAnalyses &&
-                applyPagination(
+            {selected.student &&
+              !selected.fileAnalyses &&
+              applyPagination(
+                filterAnalyses(
                   Array.from(Object.entries(sortedByFileName)),
-                  currentPage,
-                  pageSize,
-                ).map(([fileName, analyses]: any) => (
-                  <>
-                    <div
-                      onClick={() => {
-                        console.log(analyses);
-                        handleSelectFile(analyses);
-                      }}
-                      className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
-                    >
-                      <div className="flex-1">
-                        <p>{fileName}</p>
-                      </div>
-
-                      <Separator orientation="vertical" />
-
-                      <div className="flex-1">
-                        <p>{analyses.length} analyses</p>
-                      </div>
+                  query,
+                ),
+                currentPage,
+                pageSize,
+              ).map(([fileName, analyses]: any) => (
+                <>
+                  <div
+                    onClick={() => {
+                      console.log(analyses);
+                      handleSelectFile(analyses);
+                    }}
+                    className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
+                  >
+                    <div className="flex-1">
+                      <p>{fileName}</p>
                     </div>
-                  </>
-                ))}
 
-              {selected.student &&
-                selected.fileAnalyses &&
-                applyPagination(
-                  selected.fileAnalyses,
-                  currentPage,
-                  pageSize,
-                ).map((analysis) => (
-                  <>
-                    <div
-                      key={analysis.$id}
-                      className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
-                      onClick={() =>
-                        navigate(`/student-analysis/${analysis.id}`, {
-                          state: {
-                            studentName: selected.student?.name,
-                            studentEmail: selected.student?.email,
-                            classroomName:
-                              selected.student?.classrooms.join(" & "),
-                          },
-                        })
-                      }
-                    >
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          Analyzed on:
-                        </p>
-                        <p className="text-[1.05rem]">
-                          {formatDate(analysis.createdAt)}
-                        </p>
-                      </div>
-                      <Separator orientation="vertical" />
+                    <Separator orientation="vertical" />
 
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          Analyzed at:
-                        </p>
-                        <p className="text-[1.05rem]">
-                          {formatTime(analysis.createdAt)}
-                        </p>
-                      </div>
+                    <div className="flex-1">
+                      <p>{analyses.length} analyses</p>
                     </div>
-                  </>
-                ))}
-            </CardContent>
-          </Card>
-        )}
+                  </div>
+                </>
+              ))}
 
-        {query && (
-          <Card>
-            <CardHeader className="flex justify-between">
-              <div>
-                <CardTitle>Analysis Records</CardTitle>
-                <CardDescription>
-                  Newest analysis records are shown first.
-                </CardDescription>
-              </div>
-              <div>
-                <Button
-                  variant={"outline"}
-                  onClick={() => {
-                    setCurrentPage(1);
-                    setSelected({
-                      student: selected.fileAnalyses ? selected.student : null,
-                      fileAnalyses: null,
-                    });
-                  }}
-                  disabled={!selected.student && !selected.fileAnalyses}
-                >
-                  Back
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {isLoading && (
-                <div className="flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">Loading...</p>
-                </div>
-              )}
-
-              {error && (
-                <div className="flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">{error}</p>
-                </div>
-              )}
-
-              {students.length === 0 && !isLoading && !error && (
-                <div className="flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">
-                    No results found.
-                  </p>
-                </div>
-              )}
-
-              {students.length > 0 &&
-                !selected.student &&
-                applyPagination(
-                  filterStudents(students, query),
-                  currentPage,
-                  pageSize,
-                ).map((student) => (
-                  <>
-                    <div
-                      key={student.$id}
-                      className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
-                      onClick={() => {
-                        console.log(student);
-                        handleSelectStudent(student);
-                      }}
-                    >
-                      <div className="flex-1">
-                        <p>{student.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {student.email}
-                        </p>
-                      </div>
-
-                      <Separator orientation="vertical" />
-
-                      <div className="flex-1 ">
-                        <p className="text-sm text-muted-foreground">
-                          Student from:
-                        </p>
-                        <p>{student.classrooms.join(" & ")}</p>
-                      </div>
-
-                      <Separator orientation="vertical" />
-
-                      <div className="flex-1 ">
-                        <p className="text-sm text-muted-foreground">Count:</p>
-                        <p>{student.analyses.length} Analysis</p>
-                      </div>
-                    </div>
-                  </>
-                ))}
-
-              {selected.student &&
-                !selected.fileAnalyses &&
-                applyPagination(
-                  filterAnalyses(
-                    Array.from(Object.entries(sortedByFileName)),
-                    query,
-                  ),
-                  currentPage,
-                  pageSize,
-                ).map(([fileName, analyses]: any) => (
-                  <>
-                    <div
-                      onClick={() => {
-                        console.log(analyses);
-                        handleSelectFile(analyses);
-                      }}
-                      className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
-                    >
-                      <div className="flex-1">
-                        <p>{fileName}</p>
-                      </div>
-
-                      <Separator orientation="vertical" />
-
-                      <div className="flex-1">
-                        <p>{analyses.length} analyses</p>
-                      </div>
-                    </div>
-                  </>
-                ))}
-
-              {selected.student &&
-                selected.fileAnalyses &&
-                applyPagination(
-                  selected.fileAnalyses,
-                  currentPage,
-                  pageSize,
-                ).map((analysis) => (
+            {selected.student &&
+              selected.fileAnalyses &&
+              applyPagination(selected.fileAnalyses, currentPage, pageSize).map(
+                (analysis) => (
                   <>
                     <div
                       key={analysis.$id}
@@ -528,10 +361,10 @@ const StudentAnalysis = () => {
                       </div>
                     </div>
                   </>
-                ))}
-            </CardContent>
-          </Card>
-        )}
+                ),
+              )}
+          </CardContent>
+        </Card>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button
@@ -610,7 +443,11 @@ function applyPagination<T>(items: T[], page: number, perPage: number): T[] {
   return items.slice(start, end);
 }
 
-function filterStudents(students: any[], query: string) {
+function filterStudents(students: any[], query: string = "") {
+  if (!query) {
+    return students;
+  }
+
   return students.filter((student) => {
     const normalizedQuery = query.toLowerCase().trim();
     const studentNameMatch = student.name
@@ -631,7 +468,11 @@ function filterStudents(students: any[], query: string) {
   });
 }
 
-function filterAnalyses(analyses: any, query: string) {
+function filterAnalyses(analyses: any, query: string = "") {
+  if (!query) {
+    return analyses;
+  }
+
   return analyses.filter(([fileName]: string[]) =>
     fileName.toLowerCase().includes(query.toLowerCase().trim()),
   );
