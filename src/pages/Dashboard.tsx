@@ -28,10 +28,12 @@ import {
   declineClassroomStudent,
   getClassroomStudents,
   saveClassroom,
+  getUserAnalyses,
 } from "@/lib/db";
 import { createClassroomCode } from "@/lib/helpers";
 import { useAuthContext } from "@/contexts/authContext";
 import { toast } from "sonner";
+import type { Student, Analysis, Classroom } from "@/types/global";
 
 type PendingStudentViewModel = {
   studentId: string;
@@ -77,6 +79,7 @@ const Dashboard = () => {
   >({});
   const { classrooms, setClassrooms } = useClassroomContext();
   const { authUser } = useAuthContext();
+  const [analyses, setAnalyses] = useState<Analysis[]>([]);
 
   const fetchDashboardStats = useCallback(async () => {
     if (!classrooms.length) {
@@ -126,6 +129,35 @@ const Dashboard = () => {
     } finally {
       setIsLoadingStats(false);
     }
+  }, [classrooms]);
+
+  useEffect(() => {
+    async function fetchAnalyses() {
+      try {
+        const students: Student[] = [];
+        const analysesList: Analysis[] = [];
+
+        for (const classroom of classrooms) {
+          const classroomStudents = await getClassroomStudents(classroom.$id);
+          classroomStudents.forEach((student) => {
+            if (!students.some((s) => s.$id === student.$id)) {
+              students.push(student);
+            }
+          });
+        }
+
+        for (const student of students) {
+          const studentAnalyses: any = await getUserAnalyses(student.$id);
+          analysesList.push(...studentAnalyses);
+        }
+
+        setAnalyses(analysesList);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    fetchAnalyses();
   }, [classrooms]);
 
   useEffect(() => {

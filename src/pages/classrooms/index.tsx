@@ -197,6 +197,7 @@ const Classrooms = () => {
                     No classrooms match your search.
                   </p>
                 ) : (
+                  filteredClassrooms &&
                   filteredClassrooms.map((classroom) => (
                     <>
                       <Card

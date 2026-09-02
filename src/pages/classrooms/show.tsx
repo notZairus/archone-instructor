@@ -35,6 +35,10 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
+import {
+  ADVICE_BY_ISSUE_TITLE,
+  VIDEO_LINK_BY_ISSUE_TITLE,
+} from "../../constants/configs";
 
 import {
   Bar,
@@ -742,7 +746,7 @@ type StudentAnalytics = {
   trend: TrendSummary;
   topIssueTitles: TopIssue[];
   insights: string[];
-  recommendations: string[];
+  recommendations: { name: string; advice: string; videoLink?: string }[];
 };
 
 type StudentRiskEntry = {
@@ -895,15 +899,21 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
               <div className="space-y-2">
                 {stats.recommendations.map((recommendation) => (
                   <div
-                    key={recommendation}
-                    className="border bg-accent p-4 rounded-md flex gap-4 "
+                    key={recommendation.name}
+                    className="border bg-card p-4 rounded-md flex gap-4 "
                   >
-                    <p className="w-48 text-[1.05rem]">
-                      {recommendation.split(":")[0]}
-                    </p>
+                    <p className="w-48 text-[1.05rem]">{recommendation.name}</p>
                     <p className="text-[1.05rem] flex-1">
-                      {recommendation.split(":")[1]}
+                      {recommendation.advice}
                     </p>
+
+                    <a
+                      className="w-16 text-right text-primary hover:underline cursor-pointer"
+                      target="_blank"
+                      href={recommendation.videoLink}
+                    >
+                      Watch
+                    </a>
                   </div>
                 ))}
               </div>
@@ -998,7 +1008,7 @@ function buildStudentAnalytics(
     trend,
     topIssueTitles,
     insights: buildInsights(trend),
-    recommendations: buildRecommendations(topIssueTitles),
+    recommendations: buildRecommendations(topIssueTitles) as any,
   };
 }
 
@@ -1188,51 +1198,17 @@ function buildInsights(trend: TrendSummary) {
 }
 
 function buildRecommendations(topIssueTitles: TopIssue[]) {
-  const recommendationsByTitle: Record<string, string> = {
-    "Unused Variable":
-      "Remove unused variables or use them in the intended logic.",
-    "Unused Function":
-      "Delete unused functions or connect them to real behavior.",
-    "Poor Variable Naming": "Use clearer, intention-revealing variable names.",
-    "Naming Convention":
-      "Apply one naming style consistently across your code.",
-    "Use of var": "Replace 'var' with 'const' or 'let'.",
-    "Name Reuse": "Give each value a distinct name within the same scope.",
-    "Duplicate Code Blocks":
-      "Extract repeated logic into a shared helper to avoid duplication.",
-    "Function Too Long":
-      "Break long functions into smaller helpers with one responsibility.",
-    "Too Many Parameters":
-      "Group related inputs into a single object or structure.",
-    "High Complexity":
-      "Simplify branching logic by splitting it into smaller helpers.",
-    "Deep Nesting":
-      "Refactor nested logic with early returns or helper functions.",
-    "TODO Comment":
-      "Convert TODO comments into tracked tasks and resolve them regularly.",
-    "Commented-out Code":
-      "Remove dead commented code to keep files clean and maintainable.",
-    "No Constructor": "Initialize fields with a constructor or initializer.",
-    "Too Many Dependencies":
-      "Reduce coupling by splitting responsibilities into smaller modules.",
-    "Method Too Long": "Split long methods into focused helper methods.",
-    "Large Class / God Class":
-      "Break large classes into smaller classes by responsibility.",
-    "Hardcoded Values":
-      "Replace magic values with named constants or configuration.",
-    "Too Many Public Methods":
-      "Keep the public API minimal and hide implementation details.",
-    "Duplicate Methods":
-      "Extract shared method logic into one helper and reuse it.",
-  };
-
-  const recommendations = topIssueTitles.map(
-    (issue) =>
-      `${issue.title} (${issue.percent.toFixed(2)}%): ${
-        recommendationsByTitle[issue.title] ||
-        "Review this issue pattern and apply the suggested fix consistently."
-      }`,
-  );
+  const recommendations = topIssueTitles.map((issue) => ({
+    name: issue.title,
+    advice:
+      ADVICE_BY_ISSUE_TITLE[
+        issue.title as keyof typeof ADVICE_BY_ISSUE_TITLE
+      ] || "No specific advice available.",
+    videoLink:
+      VIDEO_LINK_BY_ISSUE_TITLE[
+        issue.title as keyof typeof VIDEO_LINK_BY_ISSUE_TITLE
+      ] || "No video link available.",
+  }));
 
   if (!recommendations.length) {
     return ["Keep the current pace and maintain consistency."];
@@ -1303,10 +1279,6 @@ function formatTrend(trend: TrendSummary) {
   }
 
   return "Stable (0% this week)";
-}
-
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
 }
 
 function average(values: number[]) {

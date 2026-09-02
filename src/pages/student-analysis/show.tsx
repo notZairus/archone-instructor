@@ -27,7 +27,6 @@ import {
   atomOneLight,
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { useThemeContext } from "@/contexts/use-theme-context";
-import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import { Separator } from "@/components/ui/separator";
 import type { Analysis, Issue, Classroom } from "@/types/global";
 import {
