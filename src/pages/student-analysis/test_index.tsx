@@ -109,7 +109,9 @@ const StudentAnalysis = () => {
 
   const totalPages = (() => {
     if (selected.student && !selected.fileAnalyses) {
-      return Math.ceil(selected.student.analyses.length / pageSize);
+      return Math.ceil(
+        Array.from(Object.keys(sortedByFileName)).length / pageSize,
+      );
     } else if (selected.student && selected.fileAnalyses) {
       return Math.ceil(selected.fileAnalyses.length / pageSize);
     } else {
