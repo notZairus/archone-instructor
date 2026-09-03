@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import React from "react";
+import type { User } from "@/types/global";
 
 export type AuthContextType = {
   authUser: User | null;

@@ -12,7 +12,6 @@ import Verify from "./pages/Verify";
 
 import Dashboard from "./pages/Dashboard";
 
-import StudentAnalysisTest from "./pages/student-analysis/test_index";
 import StudentAnalysis from "./pages/student-analysis/test_index";
 import StudentAnalysisShow from "./pages/student-analysis/show";
 

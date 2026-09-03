@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,6 +37,8 @@ import {
   DEFAULT_FALLBACK_PENALTY,
 } from "@/constants/configs";
 import CircularBar from "@/components/CircularBar";
+import { useAuthContext } from "@/contexts/authContext";
+import { sendFeedback } from "@/lib/db";
 
 type LocationState = {
   studentName?: string;
@@ -57,6 +60,7 @@ export default function StudentAnalysisShow() {
   const location = useLocation();
   const state = (location.state || {}) as LocationState;
   const { classrooms } = useClassroomContext();
+  const { authUser } = useAuthContext();
 
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [studentName, setStudentName] = useState(state.studentName || "");
@@ -210,18 +214,6 @@ export default function StudentAnalysisShow() {
     setSelectedLineEnd(endLine);
     setFeedbackText("");
     setIsFeedbackDialogOpen(true);
-
-    const selectedLines = Array.from(
-      { length: endLine - startLine + 1 },
-      (_, index) => startLine + index,
-    );
-    const selectedText = selectedLines
-      .map((lineNumber) => `${lineNumber}: ${codeLines[lineNumber - 1] || ""}`)
-      .join("\n");
-
-    console.log(
-      `[ArcHone] selected lines ${startLine}-${endLine}:\n${selectedText}`,
-    );
   };
 
   const selectedSnippet = useMemo(() => {
@@ -288,21 +280,29 @@ export default function StudentAnalysisShow() {
     openFeedbackDialog(startLine, endLine);
   };
 
-  const handleFeedbackSubmit = () => {
-    console.clear();
+  const handleFeedbackSubmit = async () => {
     if (!feedbackText.trim()) {
       return;
     }
 
-    console.log("[ArcHone] instructor feedback", {
-      analysisId,
-      lineStart: selectedLine,
-      lineEnd: selectedLineEnd,
-      feedback: feedbackText.trim(),
-    });
+    if (!selectedSnippet) {
+      return;
+    }
 
-    console.log(selectedSnippet);
+    try {
+      await sendFeedback({
+        analysisId: analysis?.id || "",
+        fileName: analysis?.fileName || "",
+        instructorId: authUser?.$id || "",
+        studentId: analysis?.userId || "",
+        message: feedbackText.trim(),
+        highlightedCode: selectedSnippet,
+      });
+    } catch (error) {
+      toast.error("Failed to send feedback.");
+    }
 
+    toast.success("Feedback sent successfully.");
     setIsFeedbackDialogOpen(false);
   };
 
@@ -416,7 +416,6 @@ export default function StudentAnalysisShow() {
               </ScrollArea>
             </div>
             <Input
-              autoFocus
               value={feedbackText}
               onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
                 setFeedbackText(event.target.value)

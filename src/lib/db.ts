@@ -1,6 +1,6 @@
 import { tablesDB } from "./appwrite";
 import { Query, ID } from "appwrite";
-import type { Student } from "@/types/global";
+import type { Classroom, Student } from "@/types/global";
 
 type UserRole = "student" | "instructor";
 
@@ -79,6 +79,16 @@ export const saveClassroom = async (
   });
 
   return newClassroom;
+};
+
+export const getClassroomsByUserId = async (userId: string) => {
+  const result = await tablesDB.listRows({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "classrooms",
+    queries: [Query.equal("userId", userId)],
+  });
+
+  return result.rows as unknown as Classroom[];
 };
 
 export const getClassroomStudents = async (classroomId: string) => {
@@ -226,6 +236,7 @@ export const getAnalysisById = async (analysisId: string) => {
   }
 
   return {
+    $id: analysis.$id,
     id: analysis.$id,
     userId: analysis.userId,
     fileName: analysis.fileName,
@@ -236,6 +247,26 @@ export const getAnalysisById = async (analysisId: string) => {
     ...propertiesData,
   };
 };
+
+export const sendFeedback = async (data: {
+  analysisId: string;
+  fileName: string;
+  instructorId: string;
+  studentId: string;
+  message: string;
+  highlightedCode: string;
+}) => {
+  await tablesDB.createRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "6a994862001659d9de4d",
+    rowId: ID.unique(),
+    data,
+  });
+};
+
+// HELPER /////////////////////////////////////////////////
+// HELPER /////////////////////////////////////////////////
+// HELPER /////////////////////////////////////////////////
 
 async function getAnalysisProperty(tableId: string, analysisId: string) {
   const properties = await tablesDB.listRows({

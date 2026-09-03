@@ -1,24 +1,24 @@
 import { useEffect, useState } from "react";
 import { classroomContext } from "../contexts/classroomContext";
 import { useAuthContext } from "@/contexts/authContext";
-import { tablesDB } from "@/lib/appwrite";
-import { Query } from "appwrite";
 import type { Classroom } from "@/types/global";
+import { getClassroomsByUserId } from "@/lib/db";
 
 const ClassroomProvider = ({ children }: { children: React.ReactNode }) => {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const { authUser } = useAuthContext();
 
   useEffect(() => {
+    if (!authUser) {
+      setClassrooms([]);
+      return;
+    }
+
     const fetchClassrooms = async () => {
       try {
-        const res = await tablesDB.listRows({
-          databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
-          tableId: "classrooms",
-          queries: [Query.equal("userId", authUser.$id)],
-        });
+        const res = await getClassroomsByUserId(authUser.$id);
 
-        setClassrooms(res.rows as unknown as Classroom[]);
+        setClassrooms(res);
       } catch {
         return [];
       }
