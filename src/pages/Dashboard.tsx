@@ -34,6 +34,8 @@ import { createClassroomCode } from "@/lib/helpers";
 import { useAuthContext } from "@/contexts/authContext";
 import { toast } from "sonner";
 import type { Student, Analysis, Classroom } from "@/types/global";
+import { Separator } from "@/components/ui/separator";
+import RecentAnalysisCard from "@/components/RecentAnalysisCard";
 
 type PendingStudentViewModel = {
   studentId: string;
@@ -62,6 +64,7 @@ const Dashboard = () => {
   const [waitingStudents, setWaitingStudents] = useState(0);
   const [acceptedStudents, setAcceptedStudents] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [isCreateClassroomModalOpen, setIsCreateClassroomModalOpen] =
     useState(false);
@@ -133,6 +136,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     async function fetchAnalyses() {
+      setIsLoadingAnalyses(true);
       try {
         const students: Student[] = [];
         const analysesList: Analysis[] = [];
@@ -151,8 +155,10 @@ const Dashboard = () => {
           analysesList.push(...studentAnalyses);
         }
 
+        setIsLoadingAnalyses(false);
         setAnalyses(analysesList);
       } catch (err) {
+        setIsLoadingAnalyses(false);
         console.error(err);
       }
     }
@@ -368,317 +374,365 @@ const Dashboard = () => {
     }
   };
 
+  const sortedByFileName: Record<string, Analysis> = {};
+
+  for (const analysis of analyses.sort((a, b) => {
+    const dateA = new Date(a.createdAt);
+    const dateB = new Date(b.createdAt);
+    return dateB.getTime() - dateA.getTime();
+  })) {
+    if (!sortedByFileName[analysis.fileName]) {
+      sortedByFileName[analysis.fileName] = analysis;
+    }
+  }
+
+  const recentAnalyses = Array.from(Object.entries(sortedByFileName)).slice(
+    0,
+    12,
+  );
+
   return (
-    <div className="min-h-screen bg-background p-6 md:p-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <header className="flex flex-col gap-4 md:flex-row md:items-end">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Instructor Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Overview of your classrooms and students.
-            </p>
-          </div>
-        </header>
+    <>
+      <Dialog
+        open={isCreateClassroomModalOpen}
+        onOpenChange={setIsCreateClassroomModalOpen}
+      >
+        <DialogContent className="bg-card border p-0 text-foreground">
+          <DialogHeader>
+            <DialogTitle>Create Classroom</DialogTitle>
+            <DialogDescription>
+              Set up a classroom and share the join code with students.
+            </DialogDescription>
+          </DialogHeader>
 
-        <section
-          className="flex flex-wrap items-center gap-2"
-          aria-label="Quick actions"
-        >
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            className="hover:scale-105"
-            onClick={handleCreateClassroomOpen}
-            aria-label="Create classroom"
+          <form
+            onSubmit={handleCreateClassroom}
+            className="space-y-4 px-4 pb-4"
           >
-            Create Classroom
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="hover:scale-105"
-            onClick={handleReviewPendingOpen}
-            aria-label="Review pending classroom requests"
-          >
-            Review Pending
-          </Button>
-          <Button
-            variant="secondary"
-            className="hover:scale-105"
-            onClick={() => void handleRefreshAnalytics()}
-            disabled={isLoadingStats}
-            aria-label="Refresh dashboard analytics"
-          >
-            {isLoadingStats ? "Refreshing..." : "Refresh"}
-          </Button>
-        </section>
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-classroom-name">Classroom Name</Label>
+              <Input
+                id="dashboard-classroom-name"
+                value={classroomForm.name}
+                onChange={(event) =>
+                  handleClassroomFormValueChange("name", event.target.value)
+                }
+                placeholder="e.g. Intro to Programming"
+                disabled={isCreatingClassroom}
+              />
+            </div>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card className="">
-            <CardHeader className="pb-2">
-              <CardDescription>Classrooms Created</CardDescription>
-              <CardTitle className="text-3xl">{classrooms.length}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">
-                Total classrooms under your account
-              </p>
-            </CardContent>
-          </Card>
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-classroom-description">
+                Classroom Description
+              </Label>
+              <Textarea
+                id="dashboard-classroom-description"
+                value={classroomForm.description}
+                onChange={(event) =>
+                  handleClassroomFormValueChange(
+                    "description",
+                    event.target.value,
+                  )
+                }
+                placeholder="e.g. Intro to coding fundamentals for first-year students"
+                disabled={isCreatingClassroom}
+              />
+            </div>
 
-          <Card className="">
-            <CardHeader className="pb-2">
-              <CardDescription>Total Accepted Students</CardDescription>
-              <CardTitle className="text-3xl">
-                {isLoadingStats ? "..." : acceptedStudents}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">
-                Accepted students across all classrooms
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="">
-            <CardHeader className="pb-2">
-              <CardDescription>Pending Classroom Acceptance</CardDescription>
-              <CardTitle className="text-3xl">
-                {isLoadingStats ? "..." : waitingStudents}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">
-                Students waiting for acceptance across all classrooms
-              </p>
-            </CardContent>
-          </Card>
-        </section>
-
-        {statsError ? (
-          <p className="text-sm text-destructive">{statsError}</p>
-        ) : null}
-
-        <Dialog
-          open={isCreateClassroomModalOpen}
-          onOpenChange={setIsCreateClassroomModalOpen}
-        >
-          <DialogContent className="bg-card border p-0 text-foreground">
-            <DialogHeader>
-              <DialogTitle>Create Classroom</DialogTitle>
-              <DialogDescription>
-                Set up a classroom and share the join code with students.
-              </DialogDescription>
-            </DialogHeader>
-
-            <form
-              onSubmit={handleCreateClassroom}
-              className="space-y-4 px-4 pb-4"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="dashboard-classroom-name">Classroom Name</Label>
-                <Input
-                  id="dashboard-classroom-name"
-                  value={classroomForm.name}
-                  onChange={(event) =>
-                    handleClassroomFormValueChange("name", event.target.value)
-                  }
-                  placeholder="e.g. Intro to Programming"
-                  disabled={isCreatingClassroom}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dashboard-classroom-description">
-                  Classroom Description
-                </Label>
-                <Textarea
-                  id="dashboard-classroom-description"
-                  value={classroomForm.description}
-                  onChange={(event) =>
-                    handleClassroomFormValueChange(
-                      "description",
-                      event.target.value,
-                    )
-                  }
-                  placeholder="e.g. Intro to coding fundamentals for first-year students"
-                  disabled={isCreatingClassroom}
-                />
-              </div>
-
-              <DialogFooter className="p-0">
+            <DialogFooter className="p-0">
+              <Button
+                type="submit"
+                className="reflective-primary rounded-lg"
+                disabled={isCreatingClassroom}
+              >
+                {isCreatingClassroom ? "Creating..." : "Create Classroom"}
+              </Button>
+              <DialogClose asChild>
                 <Button
-                  type="submit"
-                  className="reflective-primary rounded-lg"
+                  type="button"
+                  variant="secondary"
+                  className="reflective rounded-lg"
                   disabled={isCreatingClassroom}
                 >
-                  {isCreatingClassroom ? "Creating..." : "Create Classroom"}
+                  Cancel
                 </Button>
-                <DialogClose asChild>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="reflective rounded-lg"
-                    disabled={isCreatingClassroom}
-                  >
-                    Cancel
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </DialogClose>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-        <Dialog open={isPendingModalOpen} onOpenChange={setIsPendingModalOpen}>
-          <DialogContent
-            className="max-h-[85vh] p-0 bg-card border"
-            aria-label="Pending classroom requests"
-          >
-            <DialogHeader>
-              <DialogTitle>Pending Requests</DialogTitle>
-              <DialogDescription>
-                Review who is requesting acceptance in each classroom.
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={isPendingModalOpen} onOpenChange={setIsPendingModalOpen}>
+        <DialogContent
+          className="max-h-[85vh] p-0 bg-card border"
+          aria-label="Pending classroom requests"
+        >
+          <DialogHeader>
+            <DialogTitle>Pending Requests</DialogTitle>
+            <DialogDescription>
+              Review who is requesting acceptance in each classroom.
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="px-4">
-              <ScrollArea className="h-[50vh] pr-3 pb-4">
-                {isLoadingPending ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                  </div>
-                ) : pendingError ? (
-                  <Card>
-                    <CardContent className="space-y-3 p-4">
-                      <p className="text-sm text-destructive">{pendingError}</p>
-                      <Button
-                        type="button"
-                        onClick={() => void handleRefreshPendingRequests()}
-                        disabled={isLoadingPending}
-                        aria-label="Retry loading pending requests"
-                      >
-                        Retry
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ) : pendingByClassroom.length === 0 ? (
-                  <div className="text-center text-muted-foreground mt-20">
-                    No pending requests at the moment.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {pendingByClassroom.map((entry) => (
-                      <Card key={entry.classroomId}>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base">
-                            {entry.classroomName}
-                          </CardTitle>
-                          <CardDescription>
-                            {entry.pendingStudents.length} pending request
-                            {entry.pendingStudents.length > 1 ? "s" : ""}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {entry.pendingStudents.map((student) => (
-                            <article
-                              key={student.studentId}
-                              className="flex flex-wrap items-center justify-between gap-2 border p-3"
-                            >
-                              <div>
-                                <p className="font-medium">
-                                  {student.studentName}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {student.studentEmail}
-                                </p>
-                              </div>
+          <div className="px-4">
+            <ScrollArea className="h-[50vh] pr-3 pb-4">
+              {isLoadingPending ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : pendingError ? (
+                <Card>
+                  <CardContent className="space-y-3 p-4">
+                    <p className="text-sm text-destructive">{pendingError}</p>
+                    <Button
+                      type="button"
+                      onClick={() => void handleRefreshPendingRequests()}
+                      disabled={isLoadingPending}
+                      aria-label="Retry loading pending requests"
+                    >
+                      Retry
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : pendingByClassroom.length === 0 ? (
+                <div className="text-center text-muted-foreground mt-20">
+                  No pending requests at the moment.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingByClassroom.map((entry) => (
+                    <Card key={entry.classroomId}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">
+                          {entry.classroomName}
+                        </CardTitle>
+                        <CardDescription>
+                          {entry.pendingStudents.length} pending request
+                          {entry.pendingStudents.length > 1 ? "s" : ""}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {entry.pendingStudents.map((student) => (
+                          <article
+                            key={student.studentId}
+                            className="flex flex-wrap items-center justify-between gap-2 border p-3"
+                          >
+                            <div>
+                              <p className="font-medium">
+                                {student.studentName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {student.studentEmail}
+                              </p>
+                            </div>
 
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    void handlePendingDecision(
-                                      entry.classroomId,
-                                      student,
-                                      "decline",
-                                    )
-                                  }
-                                  disabled={
-                                    !!pendingActionLoading[
-                                      `${entry.classroomId}:${student.studentId}`
-                                    ]
-                                  }
-                                  aria-label={`Decline ${student.studentName}`}
-                                >
-                                  Decline
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  onClick={() =>
-                                    void handlePendingDecision(
-                                      entry.classroomId,
-                                      student,
-                                      "accept",
-                                    )
-                                  }
-                                  disabled={
-                                    !!pendingActionLoading[
-                                      `${entry.classroomId}:${student.studentId}`
-                                    ]
-                                  }
-                                  aria-label={`Accept ${student.studentName}`}
-                                >
-                                  {pendingActionLoading[
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  void handlePendingDecision(
+                                    entry.classroomId,
+                                    student,
+                                    "decline",
+                                  )
+                                }
+                                disabled={
+                                  !!pendingActionLoading[
                                     `${entry.classroomId}:${student.studentId}`
                                   ]
-                                    ? "Saving..."
-                                    : "Accept"}
-                                </Button>
-                              </div>
-                            </article>
-                          ))}
+                                }
+                                aria-label={`Decline ${student.studentName}`}
+                              >
+                                Decline
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() =>
+                                  void handlePendingDecision(
+                                    entry.classroomId,
+                                    student,
+                                    "accept",
+                                  )
+                                }
+                                disabled={
+                                  !!pendingActionLoading[
+                                    `${entry.classroomId}:${student.studentId}`
+                                  ]
+                                }
+                                aria-label={`Accept ${student.studentName}`}
+                              >
+                                {pendingActionLoading[
+                                  `${entry.classroomId}:${student.studentId}`
+                                ]
+                                  ? "Saving..."
+                                  : "Accept"}
+                              </Button>
+                            </div>
+                          </article>
+                        ))}
 
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() =>
-                              handleOpenClassroom(entry.classroomId)
-                            }
-                            aria-label={`Open classroom ${entry.classroomName}`}
-                          >
-                            Open Classroom
-                          </Button>
-                        </CardContent>
-                      </Card>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => handleOpenClassroom(entry.classroomId)}
+                          aria-label={`Open classroom ${entry.classroomName}`}
+                        >
+                          Open Classroom
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              className="reflective-primary rounded-lg"
+              onClick={() => void handleRefreshPendingRequests()}
+              disabled={isLoadingPending}
+              aria-label="Refresh pending requests"
+            >
+              {isLoadingPending ? "Refreshing..." : "Refresh"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="min-h-screen bg-background p-6 md:p-10 pb-16">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+          <header className="flex flex-col gap-4 md:flex-row md:items-end">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">
+                Instructor Dashboard
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Overview of your classrooms and students.
+              </p>
+            </div>
+          </header>
+
+          <section
+            className="flex flex-wrap items-center gap-2"
+            aria-label="Quick actions"
+          >
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              className="hover:scale-105"
+              onClick={handleCreateClassroomOpen}
+              aria-label="Create classroom"
+            >
+              Create Classroom
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="hover:scale-105"
+              onClick={handleReviewPendingOpen}
+              aria-label="Review pending classroom requests"
+            >
+              Review Pending
+            </Button>
+            <Button
+              variant="secondary"
+              className="hover:scale-105"
+              onClick={() => void handleRefreshAnalytics()}
+              disabled={isLoadingStats}
+              aria-label="Refresh dashboard analytics"
+            >
+              {isLoadingStats ? "Refreshing..." : "Refresh"}
+            </Button>
+          </section>
+
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="">
+              <CardHeader className="pb-2">
+                <CardDescription>Classrooms Created</CardDescription>
+                <CardTitle className="text-3xl">{classrooms.length}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Total classrooms under your account
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="">
+              <CardHeader className="pb-2">
+                <CardDescription>Total Accepted Students</CardDescription>
+                <CardTitle className="text-3xl">
+                  {isLoadingStats ? "..." : acceptedStudents}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Accepted students across all classrooms
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="">
+              <CardHeader className="pb-2">
+                <CardDescription>Pending Classroom Acceptance</CardDescription>
+                <CardTitle className="text-3xl">
+                  {isLoadingStats ? "..." : waitingStudents}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Students waiting for acceptance across all classrooms
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+
+          {statsError ? (
+            <p className="text-sm text-destructive">{statsError}</p>
+          ) : null}
+
+          <Separator />
+
+          <section className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle>Recent Analyses</CardTitle>
+                <CardDescription>
+                  The most recent analyses performed by your students across all
+                  classrooms.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingAnalyses ? (
+                  <p className="text-sm text-muted-foreground">
+                    Loading recent analysis...
+                  </p>
+                ) : recentAnalyses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No analyses found for your classroom members yet.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {recentAnalyses.map(([_, analysis]) => (
+                      <RecentAnalysisCard key={analysis.id} data={analysis} />
                     ))}
                   </div>
                 )}
-              </ScrollArea>
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                className="reflective-primary rounded-lg"
-                onClick={() => void handleRefreshPendingRequests()}
-                disabled={isLoadingPending}
-                aria-label="Refresh pending requests"
-              >
-                {isLoadingPending ? "Refreshing..." : "Refresh"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              </CardContent>
+            </Card>
+          </section>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
