@@ -2,6 +2,8 @@ import { tablesDB } from "./appwrite";
 import { Query, ID } from "appwrite";
 import type { Classroom, Student } from "@/types/global";
 
+const MAX_ROWS = 100;
+
 type UserRole = "student" | "instructor";
 
 export const getUserWithEmail = async (email: string) => {
@@ -85,7 +87,7 @@ export const getClassroomsByUserId = async (userId: string) => {
   const result = await tablesDB.listRows({
     databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
     tableId: "classrooms",
-    queries: [Query.equal("userId", userId)],
+    queries: [Query.equal("userId", userId), Query.limit(MAX_ROWS)],
   });
 
   return result.rows as unknown as Classroom[];
@@ -95,7 +97,7 @@ export const getClassroomStudents = async (classroomId: string) => {
   const result = await tablesDB.listRows({
     databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
     tableId: "classroom_user",
-    queries: [Query.equal("classroomId", classroomId)],
+    queries: [Query.equal("classroomId", classroomId), Query.limit(MAX_ROWS)],
   });
 
   const rows = result.rows.map((row) => ({
@@ -180,7 +182,7 @@ export const getUserAnalyses = async (userId: string) => {
   const analyses = await tablesDB.listRows({
     databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
     tableId: "analyses",
-    queries: [Query.equal("userId", userId)],
+    queries: [Query.equal("userId", userId), Query.limit(MAX_ROWS)],
   });
 
   const formattedAnalyses = analyses.rows.map((analysis) => ({
@@ -189,6 +191,7 @@ export const getUserAnalyses = async (userId: string) => {
     fileType: analysis.fileType,
     userId: analysis.userId,
     code: analysis.code,
+    mode: analysis.mode,
     createdAt: analysis.$createdAt,
     updatedAt: analysis.$updatedAt,
   }));
@@ -272,7 +275,7 @@ async function getAnalysisProperty(tableId: string, analysisId: string) {
   const properties = await tablesDB.listRows({
     databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
     tableId,
-    queries: [Query.equal("analysisId", analysisId)],
+    queries: [Query.equal("analysisId", analysisId), Query.limit(MAX_ROWS)],
   });
 
   return properties.rows.map((property) => ({

@@ -43,9 +43,9 @@ const menuItems = [
   },
   {
     title: "Student Analysis",
-    href: "/student-analysis",
+    href: "/analyses",
     icon: FileTextIcon,
-    match: (pathname: string) => pathname === "/student-analysis",
+    match: (pathname: string) => pathname === "/analyses",
   },
 ];
 

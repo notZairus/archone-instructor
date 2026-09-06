@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { getAnalysisById, getClassroomStudents, getUserById } from "@/lib/db";
@@ -332,7 +332,7 @@ export default function StudentAnalysisShow() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/student-analysis")}
+            onClick={() => navigate("/analyses")}
           >
             Back
           </Button>
@@ -353,7 +353,7 @@ export default function StudentAnalysisShow() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/student-analysis")}
+            onClick={() => navigate("/analyses")}
           >
             Back
           </Button>
@@ -415,13 +415,15 @@ export default function StudentAnalysisShow() {
                 </pre>
               </ScrollArea>
             </div>
-            <Input
-              value={feedbackText}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                setFeedbackText(event.target.value)
-              }
-              placeholder="Type your feedback here"
-            />
+            <div>
+              <p className="text-muted-foreground text-xs mb-2">Message: </p>
+              <Textarea
+                className="h-24 resize-none"
+                value={feedbackText}
+                onChange={(event) => setFeedbackText(event.target.value)}
+                placeholder="Type your feedback here"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -513,7 +515,7 @@ export default function StudentAnalysisShow() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate("/student-analysis")}
+              onClick={() => navigate("/analyses")}
             >
               Back
             </Button>

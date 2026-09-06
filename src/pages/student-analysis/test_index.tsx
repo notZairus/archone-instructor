@@ -326,14 +326,26 @@ const StudentAnalysis = () => {
 
             {selected.student &&
               selected.fileAnalyses &&
-              applyPagination(selected.fileAnalyses, currentPage, pageSize).map(
-                (analysis) => (
+              applyPagination(
+                selected.fileAnalyses,
+                currentPage,
+                pageSize,
+              ).filter((analysis) => analysis.mode === "general").length >
+                0 && (
+                <p className="text-sm text-muted-foreground">General Mode</p>
+              )}
+
+            {selected.student &&
+              selected.fileAnalyses &&
+              applyPagination(selected.fileAnalyses, currentPage, pageSize)
+                .filter((analysis) => analysis.mode === "general")
+                .map((analysis) => (
                   <>
                     <div
                       key={analysis.$id}
                       className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
                       onClick={() =>
-                        navigate(`/student-analysis/${analysis.id}`, {
+                        navigate(`/analyses/${analysis.id}`, {
                           state: {
                             studentName: selected.student?.name,
                             studentEmail: selected.student?.email,
@@ -363,8 +375,114 @@ const StudentAnalysis = () => {
                       </div>
                     </div>
                   </>
-                ),
+                ))}
+
+            {selected.student &&
+              selected.fileAnalyses &&
+              applyPagination(
+                selected.fileAnalyses,
+                currentPage,
+                pageSize,
+              ).filter((analysis) => analysis.mode === "oop").length > 0 && (
+                <p className="text-sm text-muted-foreground mt-4">OOP Mode</p>
               )}
+
+            {selected.student &&
+              selected.fileAnalyses &&
+              applyPagination(selected.fileAnalyses, currentPage, pageSize)
+                .filter((analysis) => analysis.mode === "oop")
+                .map((analysis) => (
+                  <>
+                    <div
+                      key={analysis.$id}
+                      className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
+                      onClick={() =>
+                        navigate(`/analyses/${analysis.id}`, {
+                          state: {
+                            studentName: selected.student?.name,
+                            studentEmail: selected.student?.email,
+                            classroomName:
+                              selected.student?.classrooms.join(" & "),
+                          },
+                        })
+                      }
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">
+                          Analyzed on:
+                        </p>
+                        <p className="text-[1.05rem]">
+                          {formatDate(analysis.createdAt)}
+                        </p>
+                      </div>
+                      <Separator orientation="vertical" />
+
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">
+                          Analyzed at:
+                        </p>
+                        <p className="text-[1.05rem]">
+                          {formatTime(analysis.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ))}
+
+            {selected.student &&
+              selected.fileAnalyses &&
+              applyPagination(
+                selected.fileAnalyses,
+                currentPage,
+                pageSize,
+              ).filter((analysis) => analysis.mode === "complexity").length >
+                0 && (
+                <p className="text-sm text-muted-foreground mt-4">
+                  Complexity Mode
+                </p>
+              )}
+
+            {selected.student &&
+              selected.fileAnalyses &&
+              applyPagination(selected.fileAnalyses, currentPage, pageSize)
+                .filter((analysis) => analysis.mode === "complexity")
+                .map((analysis) => (
+                  <>
+                    <div
+                      key={analysis.$id}
+                      className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
+                      onClick={() =>
+                        navigate(`/complexities/${analysis.id}`, {
+                          state: {
+                            studentName: selected.student?.name,
+                            studentEmail: selected.student?.email,
+                            classroomName:
+                              selected.student?.classrooms.join(" & "),
+                          },
+                        })
+                      }
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">
+                          Analyzed on:
+                        </p>
+                        <p className="text-[1.05rem]">
+                          {formatDate(analysis.createdAt)}
+                        </p>
+                      </div>
+                      <Separator orientation="vertical" />
+
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">
+                          Analyzed at:
+                        </p>
+                        <p className="text-[1.05rem]">
+                          {formatTime(analysis.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ))}
           </CardContent>
         </Card>
 

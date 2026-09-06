@@ -43,6 +43,7 @@ export interface Analysis extends Timestamps {
   fileName: string;
   fileType: string;
   code: string;
+  mode: string;
   createdAt: string;
   updatedAt?: string;
   comments?: Array<{ id?: string; line?: number; text?: string }>;
