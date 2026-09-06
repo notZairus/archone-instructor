@@ -72,26 +72,65 @@ export const ADVICE_BY_ISSUE_TITLE = {
 };
 
 export const VIDEO_LINK_BY_ISSUE_TITLE = {
-  "Unused Variable": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Unused Function": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Poor Variable Naming": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Naming Convention": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Use of var": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Name Reuse": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Duplicate Code Blocks": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Function Too Long": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Too Many Parameters": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "High Complexity": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Deep Nesting": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "TODO Comment": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Commented-out Code": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "No Constructor": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Too Many Dependencies": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Method Too Long": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Large Class / God Class": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Hardcoded Values": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Too Many Public Methods": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
-  "Duplicate Methods": "https://www.youtube.com/watch?v=-J3wNP6u5YU",
+  "Unused Variable":
+    "https://www.youtube.com/results?search_query=unused+variable",
+
+  "Unused Function":
+    "https://www.youtube.com/results?search_query=unused+function",
+
+  "Poor Variable Naming":
+    "https://www.youtube.com/results?search_query=poor+variable+naming",
+
+  "Naming Convention":
+    "https://www.youtube.com/results?search_query=programming+naming+conventions",
+
+  "Use of var":
+    "https://www.youtube.com/results?search_query=javascript+var+vs+let+const",
+
+  "Name Reuse":
+    "https://www.youtube.com/results?search_query=programming+variable+name+reuse",
+
+  "Duplicate Code Blocks":
+    "https://www.youtube.com/results?search_query=duplicate+code+refactoring",
+
+  "Function Too Long":
+    "https://www.youtube.com/results?search_query=long+function+code+smell+refactoring",
+
+  "Too Many Parameters":
+    "https://www.youtube.com/results?search_query=too+many+parameters+code+smell",
+
+  "High Complexity":
+    "https://www.youtube.com/results?search_query=cyclomatic+complexity+code",
+
+  "Deep Nesting":
+    "https://www.youtube.com/results?search_query=deeply+nested+code+refactoring",
+
+  "TODO Comment":
+    "https://www.youtube.com/results?search_query=TODO+comments+code+smell",
+
+  "Commented-out Code":
+    "https://www.youtube.com/results?search_query=commented+out+code+code+smell",
+
+  "No Constructor":
+    "https://www.youtube.com/results?search_query=javascript+class+constructor+best+practices",
+
+  "Too Many Dependencies":
+    "https://www.youtube.com/results?search_query=too+many+dependencies+code+smell",
+
+  "Method Too Long":
+    "https://www.youtube.com/results?search_query=long+method+code+smell+refactoring",
+
+  "Large Class / God Class":
+    "https://www.youtube.com/results?search_query=god+class+code+smell+refactoring",
+
+  "Hardcoded Values":
+    "https://www.youtube.com/results?search_query=hardcoded+values+code+smell",
+
+  "Too Many Public Methods":
+    "https://www.youtube.com/results?search_query=too+many+public+methods+code+smell",
+
+  "Duplicate Methods":
+    "https://www.youtube.com/results?search_query=duplicate+methods+code+smell+refactoring",
 };
 
 export const DEFAULT_PENALTY_BY_TYPE: Record<string, number> = {
