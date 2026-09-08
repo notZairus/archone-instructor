@@ -140,3 +140,47 @@ export const DEFAULT_PENALTY_BY_TYPE: Record<string, number> = {
 };
 
 export const DEFAULT_FALLBACK_PENALTY = 5;
+
+export const COMPLEXITY_CLASSES = [
+  {
+    rank: 1,
+    name: "Constant",
+    notation: "O(1)",
+    description:
+      "No loops, recognized iteration methods, or recursion are found.",
+  },
+  {
+    rank: 2,
+    name: "Linear",
+    notation: "O(n)",
+    description: "One loop or one simple recursive call.",
+  },
+  {
+    rank: 3,
+    name: "Linearithmic",
+    notation: "O(n log n)",
+    description: "Recognized sorting operations.",
+    examples: {
+      JavaScript: [".sort()"],
+      Python: ["sort()", "sorted()"],
+      "C#": ["OrderBy()", "OrderByDescending()"],
+    },
+  },
+  {
+    rank: 4,
+    name: "Polynomial",
+    notation: "O(n^k)",
+    description: "Based on the maximum nested-loop depth.",
+    examples: {
+      "One nested loop": "O(n^2)",
+      "Three nested loops": "O(n^3)",
+    },
+  },
+  {
+    rank: 5,
+    name: "Exponential",
+    notation: "O(2^n)",
+    description:
+      "Multiple recursive calls when no obvious divide-and-conquer work is detected.",
+  },
+];

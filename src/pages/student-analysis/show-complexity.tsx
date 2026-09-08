@@ -29,14 +29,11 @@ import {
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { useThemeContext } from "@/contexts/use-theme-context";
 import { Separator } from "@/components/ui/separator";
-import type { Analysis, Issue, Classroom } from "@/types/global";
+import type { Complexity, Issue, Classroom } from "@/types/global";
 import {
-  TYPE_DISPLAY_ORDER,
   ISSUE_PRINCIPLE_BY_TITLE,
-  DEFAULT_PENALTY_BY_TYPE,
-  DEFAULT_FALLBACK_PENALTY,
+  COMPLEXITY_CLASSES,
 } from "@/constants/configs";
-import CircularBar from "@/components/CircularBar";
 import { useAuthContext } from "@/contexts/authContext";
 import { sendFeedback } from "@/lib/db";
 
@@ -62,12 +59,12 @@ export default function StudentAnalysisShow() {
   const { classrooms } = useClassroomContext();
   const { authUser } = useAuthContext();
 
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [analysis, setAnalysis] = useState<Complexity | null>(null);
   const [studentName, setStudentName] = useState(state.studentName || "");
   const [studentEmail, setStudentEmail] = useState(state.studentEmail || "");
   const [classroomName, setClassroomName] = useState(state.classroomName || "");
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [selectedIssue] = useState<Issue | null>(null);
   const [selectedLineEnd, setSelectedLineEnd] = useState<number | null>(null);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
@@ -91,7 +88,7 @@ export default function StudentAnalysisShow() {
       setError(null);
 
       try {
-        const detail = (await getAnalysisById(analysisId)) as Analysis | null;
+        const detail = (await getAnalysisById(analysisId)) as Complexity | null;
 
         if (!detail) {
           setAnalysis(null);
@@ -118,8 +115,9 @@ export default function StudentAnalysisShow() {
             setClassroomName(match);
           }
         }
-      } catch {
+      } catch (err) {
         setError("Could not load this analysis right now.");
+        console.log(err);
       } finally {
         setIsLoading(false);
       }
@@ -127,52 +125,6 @@ export default function StudentAnalysisShow() {
 
     void fetchAnalysis();
   }, [analysisId, classrooms, classroomName, studentEmail, studentName]);
-
-  const sortedIssues = useMemo(() => {
-    const issues = analysis?.issues || [];
-
-    return [...issues].sort((left, right) => {
-      const rankLeft = TYPE_DISPLAY_ORDER.indexOf(
-        String(left.type || "unknown").toLowerCase(),
-      );
-      const rankRight = TYPE_DISPLAY_ORDER.indexOf(
-        String(right.type || "unknown").toLowerCase(),
-      );
-
-      const normalizedLeft =
-        rankLeft === -1 ? TYPE_DISPLAY_ORDER.length : rankLeft;
-      const normalizedRight =
-        rankRight === -1 ? TYPE_DISPLAY_ORDER.length : rankRight;
-
-      if (normalizedLeft !== normalizedRight) {
-        return normalizedLeft - normalizedRight;
-      }
-
-      return (left.line || 0) - (right.line || 0);
-    });
-  }, [analysis?.issues]);
-
-  const qualityScore = useMemo(() => {
-    if (!analysis) {
-      return 1;
-    }
-
-    let initialScore = 100;
-
-    if (!sortedIssues.length) {
-      return initialScore;
-    }
-
-    sortedIssues.forEach((issue) => {
-      const type = issue.type;
-      const penalty =
-        DEFAULT_PENALTY_BY_TYPE[type || "improvement"] ||
-        DEFAULT_FALLBACK_PENALTY;
-      initialScore -= penalty;
-    });
-
-    return Math.max(1, initialScore);
-  }, [analysis, sortedIssues]);
 
   const syntaxLanguage = useMemo(() => {
     if (!analysis) {
@@ -306,12 +258,6 @@ export default function StudentAnalysisShow() {
     setIsFeedbackDialogOpen(false);
   };
 
-  const handleSelectIssue = (issue: Issue) => {
-    console.log(issue);
-    setSelectedIssue(issue);
-    setIsIssueDialogOpen(true);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-6 md:p-10">
@@ -369,6 +315,9 @@ export default function StudentAnalysisShow() {
       </div>
     );
   }
+
+  const slowestTimeComplexity = getSlowestTimeComplexity(analysis);
+  const slowestSpaceComplexity = getSlowestSpaceComplexity(analysis);
 
   return (
     <>
@@ -526,180 +475,90 @@ export default function StudentAnalysisShow() {
               <CardHeader>
                 <CardTitle>Analysis Detail</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-2 text-sm md:grid-cols-2 items-start">
+              <CardContent>
                 <div className="p-2 border bg-card rounded-lg">
                   <p className="text-xs text-muted-foreground">
                     Student Name:{" "}
                   </p>
                   <p>{studentName}</p>
                 </div>
-                <div className="p-2 border bg-card rounded-lg">
-                  <p className="text-xs text-muted-foreground">File: </p>
-                  <p className="wrap-break-word">
-                    {analysis.fileName.replace("\\", "/").split("/").pop()}
-                  </p>
-                </div>
-                <div className="p-2 border bg-card rounded-lg">
-                  <p className="text-xs text-muted-foreground">File type: </p>
-                  <p>
-                    {fileTypes[analysis.fileType as keyof typeof fileTypes]} (
-                    {analysis.fileType})
-                  </p>
-                </div>
-                <div className="p-2 border bg-card rounded-lg">
-                  <p className="text-xs text-muted-foreground">
-                    Analysis date:{" "}
-                  </p>
-                  <p>{formatDateTime(analysis.createdAt)}</p>
+                <div className="mt-4 grid gap-2 text-sm md:grid-cols-2 items-start">
+                  <div className="p-2 border bg-card rounded-lg">
+                    <p className="text-xs text-muted-foreground">File: </p>
+                    <p className="wrap-break-word">
+                      {analysis.fileName.replace("\\", "/").split("/").pop()}
+                    </p>
+                  </div>
+                  <div className="p-2 border bg-card rounded-lg">
+                    <p className="text-xs text-muted-foreground">File type: </p>
+                    <p>
+                      {fileTypes[analysis.fileType as keyof typeof fileTypes]} (
+                      {analysis.fileType})
+                    </p>
+                  </div>
+                  <div className="p-2 border bg-card rounded-lg">
+                    <p className="text-xs text-muted-foreground">
+                      Analysis Mode:{" "}
+                    </p>
+                    <p>{analysis.mode.toUpperCase()}</p>
+                  </div>
+                  <div className="p-2 border bg-card rounded-lg">
+                    <p className="text-xs text-muted-foreground">
+                      Analysis date:{" "}
+                    </p>
+                    <p>{formatDateTime(analysis.createdAt)}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Analysis Summary</CardTitle>
+                <CardTitle>Complexity Summary</CardTitle>
               </CardHeader>
+              <Separator />
               <CardContent>
-                <div className="flex gap-4">
-                  <div className="w-1/3">
-                    <CircularBar score={qualityScore} />
-                  </div>
-                  <div className="flex-1 flex items-center">
-                    {qualityScore >= 75 && (
-                      <div>
-                        <p className="text-lg font-medium text-green-600">
-                          Good Quality
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Your code is of mostly good, but there are some issues
-                          to improve.
-                        </p>
-                      </div>
-                    )}
-                    {qualityScore < 75 && qualityScore >= 50 && (
-                      <div>
-                        <p className="text-lg font-medium text-yellow-600">
-                          Fair Quality
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Your code is of fair quality, but there are several
-                          issues that need to be addressed.
-                        </p>
-                      </div>
-                    )}
-                    {qualityScore < 50 && (
-                      <div>
-                        <p className="text-lg font-medium text-red-600">
-                          Poor Quality
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Your code is of poor quality and needs significant
-                          improvements.
-                        </p>
-                      </div>
-                    )}
+                <div className="flex-1">
+                  <p className="text-muted-foreground">Time Complexity:</p>
+                  <div className="w-full mt-4 flex items-center justify-between gap-8">
+                    <div className="w-1/6 aspect-square rounded-full bg-accent flex items-center justify-center">
+                      <p className="text-center text-lg font-bold text-white">
+                        {slowestTimeComplexity?.notation}
+                      </p>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-lg">
+                        {slowestTimeComplexity?.name} Complexity
+                      </p>
+                    </div>
                   </div>
                 </div>
-
-                <Separator className="my-4" />
-
-                <div className="w-full flex gap-4 items-center justify-between">
-                  <div
-                    className={`flex-1 border h-full rounded-lg p-2 bg-red-500/8`}
-                  >
-                    <p className="text-center font-semibold opacity-60 text-xs">
-                      Warnings
-                    </p>
-                    <p className="text-center text-lg mt-2 font-semibold opacity-80">
-                      {
-                        sortedIssues.filter((issue) => issue.type === "warning")
-                          .length
-                      }
-                    </p>
-                  </div>
-                  <div
-                    className={`flex-1 border h-full rounded-lg p-2 bg-yellow-500/8`}
-                  >
-                    <p className="text-center font-semibold opacity-60 text-xs">
-                      Improvements
-                    </p>
-                    <p className="text-center text-lg mt-2 font-semibold opacity-80">
-                      {
-                        sortedIssues.filter(
-                          (issue) => issue.type === "improvement",
-                        ).length
-                      }
-                    </p>
-                  </div>
-                  <div
-                    className={`flex-1 border h-full rounded-lg p-2 bg-blue-500/8`}
-                  >
-                    <p className="text-center font-semibold opacity-60 text-xs">
-                      Infos
-                    </p>
-                    <p className="text-center text-lg mt-2 font-semibold opacity-80">
-                      {
-                        sortedIssues.filter((issue) => issue.type === "info")
-                          .length
-                      }
-                    </p>
+                <Separator className="my-2" />
+                <div className="flex-1">
+                  <p className="text-muted-foreground">Space Complexity:</p>
+                  <div className="w-full mt-4 flex items-center justify-between gap-8">
+                    <div className="w-1/6 aspect-square rounded-full bg-accent flex items-center justify-center">
+                      <p className="text-center text-lg font-bold text-white">
+                        {slowestSpaceComplexity?.notation}
+                      </p>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-lg">
+                        {slowestSpaceComplexity?.name} Complexity
+                      </p>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
             <Card>
               <CardHeader>
-                <CardTitle>Detailed Findings</CardTitle>
+                <CardTitle>Analyzed Functions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <ScrollArea className="h-64">
-                  <div className="space-y-4">
-                    {sortedIssues.length ? (
-                      sortedIssues.map((issue, index) => (
-                        <div
-                          key={issue.id || `${issue.title}-${index}`}
-                          className="bg-card border rounded-lg p-4 text-sm cursor-pointer hover:bg-accent transition-colors duration-300"
-                          onClick={() => handleSelectIssue(issue)}
-                        >
-                          <p className="font-medium">
-                            {index + 1}. {issue.title || "Bad Practice"}
-                          </p>
-                          {issue.type && (
-                            <p className="text-xs text-muted-foreground mb-2">
-                              {issue.type.slice(0, 1).toUpperCase() +
-                                issue.type.slice(1).toLowerCase()}
-                            </p>
-                          )}
-                          {typeof issue.line === "number" ? (
-                            <p className="text-xs text-muted-foreground">
-                              Location: line {issue.line}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              Location: unknown
-                            </p>
-                          )}
-                          {issue.functionName ? (
-                            <p className="text-xs text-muted-foreground">
-                              Function: {issue.functionName}()
-                            </p>
-                          ) : null}
-                          {issue.functionLines ? (
-                            <p className="text-xs text-muted-foreground">
-                              Lines: {issue.functionLines}
-                            </p>
-                          ) : null}
-                          <p className="text-xs text-muted-foreground">
-                            Violated principle: {getViolatedPrinciple(issue)}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="rounded-none border border-dashed p-4 text-sm text-muted-foreground">
-                        No issues found in this analysis.
-                      </p>
-                    )}
-                  </div>
+                <ScrollArea className="h-55">
+                  <div className="space-y-4"></div>
                 </ScrollArea>
               </CardContent>
             </Card>
@@ -800,5 +659,63 @@ function getViolatedPrinciple(issue: Issue) {
     ISSUE_PRINCIPLE_BY_TITLE[
       issue.title as keyof typeof ISSUE_PRINCIPLE_BY_TITLE
     ] || "N/A"
+  );
+}
+
+function getTimeComplexityClasses(analysis: Complexity) {
+  return (
+    analysis?.complexitySummary?.functions?.map((func) => func.time?.class) ||
+    []
+  ).filter((cls) => cls !== undefined) as string[];
+}
+
+function getSpaceComplexityClasses(analysis: Complexity) {
+  return (
+    analysis?.complexitySummary?.functions?.map((func) => func.space?.class) ||
+    []
+  ).filter((cls) => cls !== undefined) as string[];
+}
+
+function getSlowestTimeComplexity(analysis: Complexity) {
+  const timeComplexityClasses = new Set(getTimeComplexityClasses(analysis));
+  const arr = new Array(...timeComplexityClasses)
+    .sort((a, b) => {
+      const classA = COMPLEXITY_CLASSES.find(
+        (cls) => cls.name.toLowerCase() === a.toLowerCase(),
+      ) as { name: string; rank: number };
+      const classB = COMPLEXITY_CLASSES.find(
+        (cls) => cls.name.toLowerCase() === b.toLowerCase(),
+      ) as { name: string; rank: number };
+
+      return classA?.rank - classB?.rank;
+    })
+    .shift();
+
+  return (
+    COMPLEXITY_CLASSES.find(
+      (cls) => cls.name.toLowerCase() === arr?.toLowerCase(),
+    ) || null
+  );
+}
+
+function getSlowestSpaceComplexity(analysis: Complexity) {
+  const spaceComplexityClasses = new Set(getSpaceComplexityClasses(analysis));
+  const arr = new Array(...spaceComplexityClasses)
+    .sort((a, b) => {
+      const classA = COMPLEXITY_CLASSES.find(
+        (cls) => cls.name.toLowerCase() === a.toLowerCase(),
+      ) as { name: string; rank: number };
+      const classB = COMPLEXITY_CLASSES.find(
+        (cls) => cls.name.toLowerCase() === b.toLowerCase(),
+      ) as { name: string; rank: number };
+
+      return classA?.rank - classB?.rank;
+    })
+    .shift();
+
+  return (
+    COMPLEXITY_CLASSES.find(
+      (cls) => cls.name.toLowerCase() === arr?.toLowerCase(),
+    ) || null
   );
 }

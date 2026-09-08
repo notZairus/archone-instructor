@@ -58,3 +58,32 @@ export interface Analysis extends Timestamps {
   variables?: Array<{ id?: string; name?: string; line?: number }>;
   issues?: AnalysisIssue[];
 }
+
+export interface Complexity extends Timestamps {
+  $id: string;
+  id: string;
+  userId: string;
+  fileName: string;
+  fileType: string;
+  code: string;
+  mode: string;
+  createdAt: string;
+  updatedAt?: string;
+  complexitySummary: {
+    functions: ComplexityFunction[];
+  };
+}
+
+export interface ComplexityFunction extends Timestamps {
+  name: string;
+  code: string;
+  line: number;
+  space: {
+    estimate: string;
+    class: string;
+  } | null;
+  time: {
+    estimate: string;
+    class: string;
+  } | null;
+}

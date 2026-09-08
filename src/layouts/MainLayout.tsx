@@ -36,10 +36,10 @@ const menuItems = [
     match: (pathname: string) => pathname === "/dashboard",
   },
   {
-    title: "Classrooms",
-    href: "/classrooms",
+    title: "My Classes",
+    href: "/classes",
     icon: ChalkboardIcon,
-    match: (pathname: string) => pathname === "/classrooms",
+    match: (pathname: string) => pathname === "/classes",
   },
   {
     title: "Student Analysis",

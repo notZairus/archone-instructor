@@ -204,7 +204,7 @@ const Classrooms = () => {
                         className="p-4 bg-card hover:bg-accent transition-colors duration-300"
                         key={classroom.$id}
                       >
-                        <Link to={`/classrooms/${classroom.$id}`}>
+                        <Link to={`/classes/${classroom.$id}`}>
                           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div className="space-y-1">
                               <h3 className="font-medium">{classroom.name}</h3>

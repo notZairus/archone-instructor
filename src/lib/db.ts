@@ -231,24 +231,81 @@ export const getAnalysisById = async (analysisId: string) => {
     return null;
   }
 
-  const properties = ["comments", "issues", "functions", "variables"];
-  const propertiesData: Record<string, unknown[]> = {};
+  if (analysis.mode !== "complexity") {
+    const properties = ["comments", "issues", "functions", "variables"];
+    const propertiesData: Record<string, unknown[]> = {};
 
-  for (const property of properties) {
-    propertiesData[property] = await getAnalysisProperty(property, analysisId);
+    for (const property of properties) {
+      propertiesData[property] = await getAnalysisProperty(
+        property,
+        analysisId,
+      );
+    }
+
+    return {
+      $id: analysis.$id,
+      id: analysis.$id,
+      userId: analysis.userId,
+      fileName: analysis.fileName,
+      fileType: analysis.fileType,
+      code: analysis.code,
+      mode: analysis.mode,
+      createdAt: analysis.$createdAt,
+      updatedAt: analysis.$updatedAt,
+      ...propertiesData,
+    };
+  } else {
+    const functions = await tablesDB.listRows({
+      databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+      tableId: "complexities",
+      queries: [Query.equal("analysisId", analysisId), Query.limit(MAX_ROWS)],
+    });
+
+    const fnWithTimeSpaceComplexity = await Promise.all(
+      functions.rows.map(async (func) => {
+        const functionId = func.$id;
+
+        const timeComp = await tablesDB.listRows({
+          databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+          tableId: "tcomplexities",
+          queries: [
+            Query.equal("complexityId", functionId),
+            Query.limit(MAX_ROWS),
+          ],
+        });
+
+        const spaceComp = await tablesDB.listRows({
+          databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+          tableId: "scomplexities",
+          queries: [
+            Query.equal("complexityId", functionId),
+            Query.limit(MAX_ROWS),
+          ],
+        });
+
+        return {
+          ...func,
+          space: spaceComp.rows[0],
+          time: timeComp.rows[0],
+        };
+      }),
+    );
+
+    return {
+      $id: analysis.$id,
+      id: analysis.$id,
+      userId: analysis.userId,
+      fileName: analysis.fileName,
+      fileType: analysis.fileType,
+      code: analysis.code,
+      mode: analysis.mode,
+      createdAt: analysis.$createdAt,
+      updatedAt: analysis.$updatedAt,
+      complexitySummary: {
+        functions: fnWithTimeSpaceComplexity,
+      },
+    };
   }
-
-  return {
-    $id: analysis.$id,
-    id: analysis.$id,
-    userId: analysis.userId,
-    fileName: analysis.fileName,
-    fileType: analysis.fileType,
-    code: analysis.code,
-    createdAt: analysis.$createdAt,
-    updatedAt: analysis.$updatedAt,
-    ...propertiesData,
-  };
 };
 
 export const sendFeedback = async (data: {

@@ -13,7 +13,8 @@ import Verify from "./pages/Verify";
 import Dashboard from "./pages/Dashboard";
 
 import StudentAnalysis from "./pages/student-analysis/test_index";
-import StudentAnalysisShow from "./pages/student-analysis/show";
+import GeneralOopShow from "./pages/student-analysis/show-gen-oop";
+import ComplexityShow from "./pages/student-analysis/show-complexity";
 
 import Classrooms from "./pages/classrooms/index";
 import ClassroomShow from "./pages/classrooms/show";
@@ -26,20 +27,22 @@ function App() {
 
         <Route
           element={
-            <AuthenticatedRoute>
-              <MainLayout />
-            </AuthenticatedRoute>
+            // <AuthenticatedRoute>
+            <MainLayout />
+            // </AuthenticatedRoute>
           }
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/analyses" element={<StudentAnalysis />} />
 
+          <Route path="/analyses/:analysisId" element={<GeneralOopShow />} />
           <Route
-            path="/analyses/:analysisId"
-            element={<StudentAnalysisShow />}
+            path="/complexities/:analysisId"
+            element={<ComplexityShow />}
           />
-          <Route path="/classrooms" element={<Classrooms />} />
-          <Route path="/classrooms/:id" element={<ClassroomShow />} />
+
+          <Route path="/classes" element={<Classrooms />} />
+          <Route path="/classes/:id" element={<ClassroomShow />} />
         </Route>
 
         <Route
