@@ -23,6 +23,7 @@ import {
   declineClassroomStudent,
   getClassroomStudents,
   getUserAnalyses,
+  getUserAnalysesWithoutComplexity,
 } from "@/lib/db";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -133,7 +134,10 @@ const ClassroomShow = () => {
 
       try {
         const analysesByStudent = await Promise.all(
-          acceptedStudentIds.map((studentId) => getUserAnalyses(studentId)),
+          acceptedStudentIds.map(
+            async (studentId) =>
+              await getUserAnalysesWithoutComplexity(studentId),
+          ),
         );
 
         const combinedAnalyses = analysesByStudent.flat() as AnalysisRecord[];

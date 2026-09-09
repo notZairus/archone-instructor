@@ -230,6 +230,61 @@ export const getUserAnalyses = async (userId: string) => {
   return formattedAnalysesWithProperties;
 };
 
+export const getUserAnalysesWithoutComplexity = async (userId: string) => {
+  const analyses = await tablesDB.listRows({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "analyses",
+    queries: [
+      Query.equal("userId", userId),
+      Query.limit(MAX_ROWS),
+      Query.notEqual("mode", "complexity"),
+    ],
+  });
+
+  const formattedAnalyses = analyses.rows.map((analysis) => ({
+    id: analysis.$id,
+    fileName: analysis.fileName,
+    fileType: analysis.fileType,
+    userId: analysis.userId,
+    code: analysis.code,
+    mode: analysis.mode,
+    createdAt: analysis.$createdAt,
+    updatedAt: analysis.$updatedAt,
+  }));
+
+  const properties = ["comments", "issues", "functions", "variables"];
+
+  const formattedAnalysesWithProperties = await Promise.all(
+    formattedAnalyses.map(async (analysis) => {
+      const analysisId = analysis.id;
+      const propertiesData: Record<string, unknown[]> = {};
+
+      for (const property of properties) {
+        propertiesData[property] = await getAnalysisProperty(
+          property,
+          analysisId,
+        );
+      }
+
+      const issues: Issue[] = propertiesData.issues as Issue[];
+
+      const filteredIssues = removeDuplicatedIssues(issues);
+
+      const cleanPropertiesData = {
+        ...propertiesData,
+        issues: filteredIssues,
+      };
+
+      return {
+        ...analysis,
+        ...cleanPropertiesData,
+      };
+    }),
+  );
+
+  return formattedAnalysesWithProperties;
+};
+
 export const getAnalysisById = async (analysisId: string) => {
   const analysis = await tablesDB.getRow({
     databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
