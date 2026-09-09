@@ -144,20 +144,20 @@ export const DEFAULT_FALLBACK_PENALTY = 5;
 export const COMPLEXITY_CLASSES = [
   {
     rank: 1,
-    name: "Constant",
+    name: "constant",
     notation: "O(1)",
     description:
       "No loops, recognized iteration methods, or recursion are found.",
   },
   {
     rank: 2,
-    name: "Linear",
+    name: "linear",
     notation: "O(n)",
     description: "One loop or one simple recursive call.",
   },
   {
     rank: 3,
-    name: "Linearithmic",
+    name: "linearithmic",
     notation: "O(n log n)",
     description: "Recognized sorting operations.",
     examples: {
@@ -168,7 +168,7 @@ export const COMPLEXITY_CLASSES = [
   },
   {
     rank: 4,
-    name: "Polynomial",
+    name: "polynomial",
     notation: "O(n^k)",
     description: "Based on the maximum nested-loop depth.",
     examples: {
@@ -178,9 +178,16 @@ export const COMPLEXITY_CLASSES = [
   },
   {
     rank: 5,
-    name: "Exponential",
+    name: "exponential",
     notation: "O(2^n)",
     description:
       "Multiple recursive calls when no obvious divide-and-conquer work is detected.",
   },
+];
+
+export const GOOD_COMPLEXITIES = [
+  "constant",
+  "logarithmic",
+  "linear",
+  "linearithmic",
 ];

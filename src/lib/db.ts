@@ -1,6 +1,7 @@
 import { tablesDB } from "./appwrite";
 import { Query, ID } from "appwrite";
-import type { Classroom, Student } from "@/types/global";
+import type { Classroom, Student, Issue, Analysis } from "@/types/global";
+import { removeDuplicatedIssues } from "./helpers";
 
 const MAX_ROWS = 100;
 
@@ -210,9 +211,18 @@ export const getUserAnalyses = async (userId: string) => {
         );
       }
 
+      const issues: Issue[] = propertiesData.issues as Issue[];
+
+      const filteredIssues = removeDuplicatedIssues(issues);
+
+      const cleanPropertiesData = {
+        ...propertiesData,
+        issues: filteredIssues,
+      };
+
       return {
         ...analysis,
-        ...propertiesData,
+        ...cleanPropertiesData,
       };
     }),
   );
@@ -231,30 +241,7 @@ export const getAnalysisById = async (analysisId: string) => {
     return null;
   }
 
-  if (analysis.mode !== "complexity") {
-    const properties = ["comments", "issues", "functions", "variables"];
-    const propertiesData: Record<string, unknown[]> = {};
-
-    for (const property of properties) {
-      propertiesData[property] = await getAnalysisProperty(
-        property,
-        analysisId,
-      );
-    }
-
-    return {
-      $id: analysis.$id,
-      id: analysis.$id,
-      userId: analysis.userId,
-      fileName: analysis.fileName,
-      fileType: analysis.fileType,
-      code: analysis.code,
-      mode: analysis.mode,
-      createdAt: analysis.$createdAt,
-      updatedAt: analysis.$updatedAt,
-      ...propertiesData,
-    };
-  } else {
+  if (analysis.mode === "complexity") {
     const functions = await tablesDB.listRows({
       databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
       tableId: "complexities",
@@ -305,6 +292,40 @@ export const getAnalysisById = async (analysisId: string) => {
         functions: fnWithTimeSpaceComplexity,
       },
     };
+  } else {
+    const properties = ["comments", "issues", "functions", "variables"];
+    const propertiesData: Record<string, unknown[]> = {};
+
+    for (const property of properties) {
+      propertiesData[property] = await getAnalysisProperty(
+        property,
+        analysisId,
+      );
+    }
+
+    const issues = propertiesData.issues;
+
+    const filteredIssues = removeDuplicatedIssues(issues as Issue[]);
+
+    const _propertiesDataWithFilteredIssues = {
+      ...propertiesData,
+      issues: filteredIssues,
+    };
+
+    const formattedAnalysis = {
+      $id: analysis.$id,
+      id: analysis.$id,
+      userId: analysis.userId,
+      fileName: analysis.fileName,
+      fileType: analysis.fileType,
+      code: analysis.code,
+      mode: analysis.mode,
+      createdAt: analysis.$createdAt,
+      updatedAt: analysis.$updatedAt,
+      ..._propertiesDataWithFilteredIssues,
+    };
+
+    return formattedAnalysis;
   }
 };
 

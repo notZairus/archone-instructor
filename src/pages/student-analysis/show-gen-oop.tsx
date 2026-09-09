@@ -307,7 +307,6 @@ export default function StudentAnalysisShow() {
   };
 
   const handleSelectIssue = (issue: Issue) => {
-    console.log(issue);
     setSelectedIssue(issue);
     setIsIssueDialogOpen(true);
   };
@@ -369,8 +368,6 @@ export default function StudentAnalysisShow() {
       </div>
     );
   }
-
-  console.log("analysis", analysis);
 
   return (
     <>

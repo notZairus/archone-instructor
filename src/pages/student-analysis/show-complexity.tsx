@@ -29,7 +29,12 @@ import {
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { useThemeContext } from "@/contexts/use-theme-context";
 import { Separator } from "@/components/ui/separator";
-import type { Complexity, Issue, Classroom } from "@/types/global";
+import type {
+  Complexity,
+  ComplexityFunction,
+  Issue,
+  Classroom,
+} from "@/types/global";
 import {
   ISSUE_PRINCIPLE_BY_TITLE,
   COMPLEXITY_CLASSES,
@@ -64,10 +69,11 @@ export default function StudentAnalysisShow() {
   const [studentEmail, setStudentEmail] = useState(state.studentEmail || "");
   const [classroomName, setClassroomName] = useState(state.classroomName || "");
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
-  const [selectedIssue] = useState<Issue | null>(null);
+  const [selectedFunction, setSelectedFunction] =
+    useState<ComplexityFunction | null>(null);
   const [selectedLineEnd, setSelectedLineEnd] = useState<number | null>(null);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
-  const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
+  const [isFunctionDialogOpen, setIsFunctionDialogOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +81,14 @@ export default function StudentAnalysisShow() {
   const codeLines = useMemo(
     () => analysis?.code.split(/\r?\n/) || [],
     [analysis?.code],
+  );
+
+  const analyzedFunctions = useMemo(
+    () =>
+      [...(analysis?.complexitySummary?.functions || [])].sort(
+        (left, right) => left.line - right.line,
+      ),
+    [analysis?.complexitySummary?.functions],
   );
 
   useEffect(() => {
@@ -250,12 +264,18 @@ export default function StudentAnalysisShow() {
         message: feedbackText.trim(),
         highlightedCode: selectedSnippet,
       });
-    } catch (error) {
+    } catch {
       toast.error("Failed to send feedback.");
     }
 
     toast.success("Feedback sent successfully.");
     setIsFeedbackDialogOpen(false);
+  };
+
+  const handleFunctionSelect = (func: ComplexityFunction) => {
+    setSelectedFunction(func);
+
+    setIsFunctionDialogOpen(true);
   };
 
   if (isLoading) {
@@ -382,14 +402,17 @@ export default function StudentAnalysisShow() {
             >
               Cancel
             </Button>
-            <Button onClick={handleFeedbackSubmit}>Sennd Feedback</Button>
+            <Button onClick={handleFeedbackSubmit}>Send Feedback</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for showing an issue */}
-      {selectedIssue && (
-        <Dialog open={isIssueDialogOpen} onOpenChange={setIsIssueDialogOpen}>
+      {/* Dialog for showing a function */}
+      {selectedFunction && (
+        <Dialog
+          open={isFunctionDialogOpen}
+          onOpenChange={setIsFunctionDialogOpen}
+        >
           <DialogContent className="bg-card border py-12">
             <div className="grid gap-3 px-4  pb-2">
               <div
@@ -413,45 +436,32 @@ export default function StudentAnalysisShow() {
                       wrapLines
                       wrapLongLines={true}
                     >
-                      {selectedIssue?.code || "No code selected."}
+                      {selectedFunction?.code || "No code selected."}
                     </SyntaxHighlighter>
                   </div>
                 </ScrollArea>
               </div>
             </div>
             <div className="px-4 mt-2">
-              <DialogTitle className="mb-2">{selectedIssue?.title}</DialogTitle>
+              <DialogTitle className="mb-2">
+                {selectedFunction?.name || "Function"}
+              </DialogTitle>
               <DialogDescription>
-                Type:{" "}
-                {(selectedIssue?.type || ("" as string))
-                  .slice(0, 1)
-                  .toUpperCase() +
-                  (selectedIssue?.type || ("" as string)).slice(1)}
-                <br />
-                Found on line {selectedIssue?.line || "No location specified."}
-                <br />
-                Violated Principle: {getViolatedPrinciple(selectedIssue)}
-                <br />
-                {selectedIssue?.functionName
-                  ? `Function: ${selectedIssue.functionName}()`
-                  : ""}
+                Found on line: {selectedFunction?.line}
               </DialogDescription>
               <Separator className="my-4" />
               <div>
-                <p className="text-sm text-muted-foreground">Message: </p>
-                <p>{selectedIssue.message}</p>
+                <p className="text-sm text-muted-foreground">
+                  Time Complexity:{" "}
+                </p>
+                <p>{selectedFunction?.time?.estimate}</p>
               </div>
               <Separator className="my-4" />
               <div>
                 <p className="text-sm text-muted-foreground">
-                  Why the issue occured:{" "}
+                  Space Complexity:{" "}
                 </p>
-                <p>{selectedIssue.why}</p>
-              </div>
-              <Separator className="my-4" />
-              <div>
-                <p className="text-sm text-muted-foreground">Suggestion: </p>
-                <p>{selectedIssue.suggestion}</p>
+                <p>{selectedFunction?.space?.estimate}</p>
               </div>
             </div>
           </DialogContent>
@@ -557,8 +567,22 @@ export default function StudentAnalysisShow() {
                 <CardTitle>Analyzed Functions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <ScrollArea className="h-55">
-                  <div className="space-y-4"></div>
+                <ScrollArea className="h-55 pr-3">
+                  <div className="space-y-3">
+                    {analyzedFunctions.length ? (
+                      analyzedFunctions.map((func, index) => (
+                        <FunctionComplexityCard
+                          key={`${func.name}-${func.line}-${index}`}
+                          func={func}
+                          onSelect={() => handleFunctionSelect(func)}
+                        />
+                      ))
+                    ) : (
+                      <p className="rounded-none border border-dashed p-4 text-sm text-muted-foreground">
+                        No functions found in this analysis.
+                      </p>
+                    )}
+                  </div>
                 </ScrollArea>
               </CardContent>
             </Card>
@@ -592,7 +616,9 @@ export default function StudentAnalysisShow() {
                       onClick: () => openFeedbackDialog(lineNumber),
                       onMouseUp: () => openFeedbackDialog(lineNumber),
                       style:
-                        selectedLine === lineNumber
+                        selectedLine !== null &&
+                        lineNumber >= selectedLine &&
+                        lineNumber <= (selectedLineEnd ?? selectedLine)
                           ? {
                               backgroundColor: "rgba(59, 130, 246, 0.22)",
                               borderLeft: "2px solid rgb(59, 130, 246)",
@@ -615,6 +641,44 @@ export default function StudentAnalysisShow() {
         </div>
       </div>
     </>
+  );
+}
+
+function FunctionComplexityCard({
+  func,
+  onSelect,
+}: {
+  func: ComplexityFunction;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="w-full rounded-lg border bg-card p-3 text-left transition-colors hover:bg-accent"
+      onClick={onSelect}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium" title={func.name}>
+          {func.name}
+        </p>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          Line {func.line}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <ComplexityMetric label="Time" value={func.time?.class} />
+        <ComplexityMetric label="Space" value={func.space?.class} />
+      </div>
+    </button>
+  );
+}
+
+function ComplexityMetric({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="rounded-md border bg-background px-2 py-1.5">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-xs font-medium">{value || "Not available"}</p>
+    </div>
   );
 }
 
@@ -689,7 +753,7 @@ function getSlowestTimeComplexity(analysis: Complexity) {
 
       return classA?.rank - classB?.rank;
     })
-    .shift();
+    .pop();
 
   return (
     COMPLEXITY_CLASSES.find(
@@ -711,7 +775,7 @@ function getSlowestSpaceComplexity(analysis: Complexity) {
 
       return classA?.rank - classB?.rank;
     })
-    .shift();
+    .pop();
 
   return (
     COMPLEXITY_CLASSES.find(
