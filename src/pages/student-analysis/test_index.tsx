@@ -22,6 +22,7 @@ import { DEFAULT_PAGE_SIZE } from "@/constants/configs";
 import type { Analysis } from "@/types/global";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router";
+import { ArrowDownNarrowWide, ArrowUpWideNarrow } from "lucide-react";
 
 interface StudentWithClassroom {
   $id: string;
@@ -47,6 +48,9 @@ const StudentAnalysis = () => {
     student: null,
     fileAnalyses: null,
   });
+  const [alphabeticalOrder, setAlphabeticalOrder] = useState<"asc" | "desc">(
+    "asc",
+  );
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -128,6 +132,53 @@ const StudentAnalysis = () => {
       return selected.fileAnalyses.length > 0;
     }
   })();
+
+  const studentsToMap =
+    students.length > 0 &&
+    !selected.student &&
+    (alphabeticalOrder === "asc"
+      ? applyPagination(
+          filterStudents(students, query),
+          currentPage,
+          pageSize,
+        ).sort((a, b) => a.name.localeCompare(b.name))
+      : students.length > 0 &&
+        !selected.student &&
+        applyPagination(filterStudents(students, query), currentPage, pageSize)
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .reverse());
+
+  const filesToMap =
+    selected.student &&
+    !selected.fileAnalyses &&
+    (alphabeticalOrder === "asc"
+      ? applyPagination(
+          filterAnalyses(Array.from(Object.entries(sortedByFileName)), query),
+          currentPage,
+          pageSize,
+        ).sort((a, b) => a[0].localeCompare(b[0]))
+      : applyPagination(
+          filterAnalyses(Array.from(Object.entries(sortedByFileName)), query),
+          currentPage,
+          pageSize,
+        )
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .reverse());
+
+  const analysesToMap =
+    selected.student &&
+    selected.fileAnalyses &&
+    (alphabeticalOrder === "asc"
+      ? applyPagination(selected.fileAnalyses, currentPage, pageSize).sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        )
+      : applyPagination(selected.fileAnalyses, currentPage, pageSize)
+          .sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+          )
+          .reverse());
 
   return (
     <div className="min-h-screen bg-background p-6 md:p-10">
@@ -214,7 +265,23 @@ const StudentAnalysis = () => {
                 Newest analysis records are shown first.
               </CardDescription>
             </div>
-            <div>
+            <div className="flex items-center gap-4">
+              <div
+                className="cursor-pointer text-xs font-bold text-muted-foreground hover:text-primary transition-colors duration-300"
+                onClick={() => {
+                  setAlphabeticalOrder(
+                    alphabeticalOrder === "asc" ? "desc" : "asc",
+                  );
+                }}
+              >
+                <div>
+                  {alphabeticalOrder === "asc" ? (
+                    <ArrowDownNarrowWide size={20} />
+                  ) : (
+                    <ArrowUpWideNarrow size={20} />
+                  )}
+                </div>
+              </div>
               <Button
                 variant={"outline"}
                 onClick={() => {
@@ -251,13 +318,8 @@ const StudentAnalysis = () => {
               </div>
             )}
 
-            {students.length > 0 &&
-              !selected.student &&
-              applyPagination(
-                filterStudents(students, query),
-                currentPage,
-                pageSize,
-              ).map((student) => (
+            {studentsToMap &&
+              studentsToMap.map((student) => (
                 <>
                   <div
                     key={student.$id}
@@ -293,16 +355,8 @@ const StudentAnalysis = () => {
                 </>
               ))}
 
-            {selected.student &&
-              !selected.fileAnalyses &&
-              applyPagination(
-                filterAnalyses(
-                  Array.from(Object.entries(sortedByFileName)),
-                  query,
-                ),
-                currentPage,
-                pageSize,
-              ).map(([fileName, analyses]: any) => (
+            {filesToMap &&
+              filesToMap.map(([fileName, analyses]: any) => (
                 <>
                   <div
                     onClick={() => {
@@ -324,20 +378,14 @@ const StudentAnalysis = () => {
                 </>
               ))}
 
-            {selected.student &&
-              selected.fileAnalyses &&
-              applyPagination(
-                selected.fileAnalyses,
-                currentPage,
-                pageSize,
-              ).filter((analysis) => analysis.mode === "general").length >
-                0 && (
+            {analysesToMap &&
+              analysesToMap.filter((analysis) => analysis.mode === "general")
+                .length > 0 && (
                 <p className="text-sm text-muted-foreground">General Mode</p>
               )}
 
-            {selected.student &&
-              selected.fileAnalyses &&
-              applyPagination(selected.fileAnalyses, currentPage, pageSize)
+            {analysesToMap &&
+              analysesToMap
                 .filter((analysis) => analysis.mode === "general")
                 .map((analysis) => (
                   <>
@@ -377,19 +425,14 @@ const StudentAnalysis = () => {
                   </>
                 ))}
 
-            {selected.student &&
-              selected.fileAnalyses &&
-              applyPagination(
-                selected.fileAnalyses,
-                currentPage,
-                pageSize,
-              ).filter((analysis) => analysis.mode === "oop").length > 0 && (
+            {analysesToMap &&
+              analysesToMap.filter((analysis) => analysis.mode === "oop")
+                .length > 0 && (
                 <p className="text-sm text-muted-foreground mt-4">OOP Mode</p>
               )}
 
-            {selected.student &&
-              selected.fileAnalyses &&
-              applyPagination(selected.fileAnalyses, currentPage, pageSize)
+            {analysesToMap &&
+              analysesToMap
                 .filter((analysis) => analysis.mode === "oop")
                 .map((analysis) => (
                   <>
@@ -429,22 +472,16 @@ const StudentAnalysis = () => {
                   </>
                 ))}
 
-            {selected.student &&
-              selected.fileAnalyses &&
-              applyPagination(
-                selected.fileAnalyses,
-                currentPage,
-                pageSize,
-              ).filter((analysis) => analysis.mode === "complexity").length >
-                0 && (
+            {analysesToMap &&
+              analysesToMap.filter((analysis) => analysis.mode === "complexity")
+                .length > 0 && (
                 <p className="text-sm text-muted-foreground mt-4">
                   Complexity Mode
                 </p>
               )}
 
-            {selected.student &&
-              selected.fileAnalyses &&
-              applyPagination(selected.fileAnalyses, currentPage, pageSize)
+            {analysesToMap &&
+              analysesToMap
                 .filter((analysis) => analysis.mode === "complexity")
                 .map((analysis) => (
                   <>

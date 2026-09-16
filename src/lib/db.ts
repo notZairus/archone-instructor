@@ -179,11 +179,17 @@ export const declineClassroomStudent = async (
   });
 };
 
-export const getUserAnalyses = async (userId: string) => {
+export const getUserAnalyses = async (userId: string, order = "desc") => {
   const analyses = await tablesDB.listRows({
     databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
     tableId: "analyses",
-    queries: [Query.equal("userId", userId), Query.limit(MAX_ROWS)],
+    queries: [
+      Query.equal("userId", userId),
+      Query.limit(MAX_ROWS),
+      order === "asc"
+        ? Query.orderAsc("$createdAt")
+        : Query.orderDesc("$createdAt"),
+    ],
   });
 
   const formattedAnalyses = analyses.rows.map((analysis) => ({

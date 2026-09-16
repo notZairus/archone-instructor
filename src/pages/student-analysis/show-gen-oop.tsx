@@ -432,7 +432,7 @@ export default function StudentAnalysisShow() {
             >
               Cancel
             </Button>
-            <Button onClick={handleFeedbackSubmit}>Sennd Feedback</Button>
+            <Button onClick={handleFeedbackSubmit}>Send Feedback</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
