@@ -23,7 +23,7 @@ function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/" element={<Navigate to="/home" />} />
 
         <Route
           element={
@@ -32,7 +32,7 @@ function App() {
             // </AuthenticatedRoute>
           }
         >
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/home" element={<Dashboard />} />
           <Route path="/analyses" element={<StudentAnalysis />} />
 
           <Route path="/analyses/:analysisId" element={<GeneralOopShow />} />

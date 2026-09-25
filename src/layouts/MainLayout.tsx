@@ -30,10 +30,10 @@ import ArchoneLogo from "@/assets/images/archone_logo.webp";
 
 const menuItems = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
+    title: "Home",
+    href: "/home",
     icon: SquaresFourIcon,
-    match: (pathname: string) => pathname === "/dashboard",
+    match: (pathname: string) => pathname === "/home",
   },
   {
     title: "My Classes",

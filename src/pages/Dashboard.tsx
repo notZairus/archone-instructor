@@ -612,7 +612,7 @@ const Dashboard = () => {
           <header className="flex flex-col gap-4 md:flex-row md:items-end">
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
-                Instructor Dashboard
+                Home Overview
               </h1>
               <p className="text-sm text-muted-foreground">
                 Overview of your classrooms and students.
