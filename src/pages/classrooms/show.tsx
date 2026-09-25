@@ -1,6 +1,7 @@
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { useClassroomContext } from "@/contexts/classroomContext";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -51,6 +52,13 @@ import {
   PieChart,
 } from "recharts";
 import type { Student } from "@/types/global";
+import {
+  AlertTriangle,
+  BarChart3,
+  FileText,
+  RefreshCw,
+  Users,
+} from "lucide-react";
 
 const ClassroomShow = () => {
   const { id } = useParams();
@@ -226,8 +234,6 @@ const ClassroomShow = () => {
     void fetchNeedsAttention();
   }, [fetchNeedsAttention]);
 
-  console.log(classStats?.topIssueTitles);
-
   const handleRefreshClassStats = async () => {
     if (!id) return;
 
@@ -392,44 +398,56 @@ const ClassroomShow = () => {
   };
 
   const chartData: any[] = [];
+  const displayedTopIssues = classStats
+    ? aggregateOtherIssues(classStats.topIssueTitles)
+    : [];
 
-  classStats &&
-    classStats.topIssueTitles.forEach((issue, index) => {
-      chartConfig[issue.title as string] = {
-        label: issue.title,
-        color: `var(--chart-${index + 1})`,
-      };
+  displayedTopIssues.forEach((issue, index) => {
+    chartConfig[issue.title as string] = {
+      label: issue.title,
+      color: `var(--chart-${index + 1})`,
+    };
 
-      chartData.push({
-        issue: issue.title,
-        percentage: issue.percent,
-        fill: `var(--chart-${index + 1})`,
-      });
+    chartData.push({
+      issue: issue.title,
+      percentage: issue.percent,
+      fill: `var(--chart-${index + 1})`,
     });
-
-  console.clear();
-
-  console.log(chartConfig);
-  console.log(chartData);
+  });
 
   return (
     <div className="min-h-screen bg-background p-6 md:p-10">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <header className="grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+        <header className="flex flex-col gap-5 border-b pb-6 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-primary">
+              <BarChart3 className="size-4" />
+              <span>Classroom overview</span>
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
               {classroom.name}
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
               {classroom.description}
             </p>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="lg">
+              <Link to={`/classes/${classroom.$id}/analyses`}>
+                <FileText />
+                Show Analyses
+              </Link>
+            </Button>
+          </div>
         </header>
 
-        <Card>
-          <CardHeader>
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b bg-muted/20 pb-5">
             <CardTitle className="flex items-center justify-between gap-3">
-              <span>Class Performance Overview</span>
+              <span className="flex items-center gap-2">
+                <BarChart3 className="size-5 text-primary" />
+                Class Performance Overview
+              </span>
               <Button
                 size="sm"
                 variant="outline"
@@ -438,6 +456,7 @@ const ClassroomShow = () => {
                 }
                 onClick={() => void handleRefreshClassStats()}
               >
+                <RefreshCw className={isRefreshingAll ? "animate-spin" : ""} />
                 {isRefreshingAll ? "Refreshing..." : "Refresh"}
               </Button>
             </CardTitle>
@@ -456,10 +475,11 @@ const ClassroomShow = () => {
               <p className="text-sm text-destructive">{classStatsError}</p>
             ) : classStats ? (
               <>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <Card size="sm">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Card size="sm" className="border-primary/20 bg-primary/3">
                     <CardContent className="space-y-1 p-3">
-                      <p className="text-sm text-muted-foreground">
+                      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <BarChart3 className="size-4 text-primary" />
                         Class Quality Score
                       </p>
                       <p className="text-xl font-semibold">
@@ -468,18 +488,10 @@ const ClassroomShow = () => {
                     </CardContent>
                   </Card>
 
-                  <Card size="sm">
+                  <Card size="sm" className="border-primary/20 bg-primary/3">
                     <CardContent className="space-y-1 p-3">
-                      <p className="text-sm text-muted-foreground">Trend</p>
-                      <p className="text-lg font-semibold">
-                        {formatTrend(classStats.trend)}
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <Card size="sm">
-                    <CardContent className="space-y-1 p-3">
-                      <p className="text-sm text-muted-foreground">
+                      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <AlertTriangle className="size-4 text-amber-500" />
                         Total Issues
                       </p>
                       <p className="text-xl font-semibold">
@@ -489,9 +501,12 @@ const ClassroomShow = () => {
                   </Card>
                 </div>
 
-                <Card>
+                <Card className="border-dashed">
                   <CardHeader>
-                    <CardTitle>Frequently Encountered Issues</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertTriangle className="size-5 text-amber-500" />
+                      Frequently Encountered Issues
+                    </CardTitle>
                     <CardDescription>
                       Most common issue patterns across all accepted students of
                       this classroom.
@@ -499,7 +514,7 @@ const ClassroomShow = () => {
                   </CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card className="md:col-span-2">
-                      <CardContent className="max-h-120">
+                      <CardContent className="max-h-80">
                         <ChartContainer
                           config={chartConfig satisfies ChartConfig}
                           className="mx-auto aspect-square h-full"
@@ -524,9 +539,9 @@ const ClassroomShow = () => {
                     </Card>
                     <Card className="md:col-span-1 border-none">
                       <CardContent className=" border-0">
-                        {classStats.topIssueTitles.length ? (
+                        {displayedTopIssues.length ? (
                           <div className="space-y-2">
-                            {classStats.topIssueTitles.map((issue, index) => (
+                            {displayedTopIssues.map((issue, index) => (
                               <p
                                 key={issue.title}
                                 className="flex items-center justify-between"
@@ -559,8 +574,11 @@ const ClassroomShow = () => {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Needs Attention</CardTitle>
+          <CardHeader className="border-b">
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-500" />
+              Needs Attention
+            </CardTitle>
             <CardDescription>
               Top 5 accepted students with the highest risk score.
             </CardDescription>
@@ -588,17 +606,20 @@ const ClassroomShow = () => {
                   return (
                     <article
                       key={student.$id}
-                      className="border hover:bg-accent transition-colors duration-300 rounded-lg p-4"
+                      className="rounded-lg border border-primary/50 bg-primary/5 p-4 transition-colors duration-300 hover:bg-accent"
                     >
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div className="space-y-1">
                           <h3 className="font-medium">{student.name}</h3>
                           <p className="text-xs text-muted-foreground">
-                            Risk Score:{" "}
-                            <span className="font-medium">
-                              {entry.riskScore}/100
-                            </span>
+                            Risk score
                           </p>
+                          <Badge
+                            variant="outline"
+                            className="mt-1 border-amber-500/40 text-amber-700 dark:text-amber-300"
+                          >
+                            {entry.riskScore}/100
+                          </Badge>
                           <p className="text-xs text-muted-foreground">
                             {entry.reasons.join(" • ")}
                           </p>
@@ -615,13 +636,16 @@ const ClassroomShow = () => {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex justify-between items-center">
-              <p>Student List</p>
+          <CardHeader className="border-b">
+            <CardTitle className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2">
+                <Users className="size-5 text-primary" />
+                Student List
+              </span>
               <div className="flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">
+                <Badge variant="secondary" className="font-normal">
                   {acceptedStudents.length} students
-                </p>
+                </Badge>
 
                 <Sheet>
                   <SheetTrigger asChild>
@@ -690,7 +714,7 @@ const ClassroomShow = () => {
             {acceptedStudents.map((student) => (
               <article
                 key={student.$id}
-                className="border hover:bg-accent transition-colors duration-300 rounded-lg p-4"
+                className="rounded-lg border p-4 transition-colors duration-300 hover:bg-accent"
               >
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -770,12 +794,16 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
     );
   }
 
-  const topIssueChartData = stats.topIssueTitles.map((issue) => ({
-    issue:
-      issue.title.length > 30 ? `${issue.title.slice(0, 30)}...` : issue.title,
-    fullIssue: issue.title,
-    percent: issue.percent,
-  }));
+  const topIssueChartData = aggregateOtherIssues(stats.topIssueTitles).map(
+    (issue) => ({
+      issue:
+        issue.title.length > 30
+          ? `${issue.title.slice(0, 30)}...`
+          : issue.title,
+      fullIssue: issue.title,
+      percent: issue.percent,
+    }),
+  );
 
   const studentTopIssuesChartConfig = {
     percent: {
@@ -786,7 +814,7 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
 
   return (
     <div className="space-y-4 text-base">
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <Card size="sm">
           <CardContent className="space-y-1 p-3">
             <p className="text-sm text-muted-foreground">Code Quality Score</p>
@@ -797,12 +825,6 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
           <CardContent className="space-y-1 p-3">
             <p className="text-sm text-muted-foreground">Files Analyzed</p>
             <p className="text-xl font-semibold">{stats.totalAnalyses}</p>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardContent className="space-y-1 p-3">
-            <p className="text-sm text-muted-foreground">Trend</p>
-            <p className="text-lg font-semibold">{formatTrend(stats.trend)}</p>
           </CardContent>
         </Card>
       </div>
@@ -1172,6 +1194,24 @@ function toSortedIssuePercentages(
     }))
     .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title))
     .slice(0, limit);
+}
+
+function aggregateOtherIssues(issues: TopIssue[], limit = 5): TopIssue[] {
+  if (issues.length <= limit) {
+    return issues;
+  }
+
+  const topIssues = issues.slice(0, limit);
+  const otherIssues = issues.slice(limit);
+
+  return [
+    ...topIssues,
+    {
+      title: "Other Issues",
+      count: otherIssues.reduce((sum, issue) => sum + issue.count, 0),
+      percent: otherIssues.reduce((sum, issue) => sum + issue.percent, 0),
+    },
+  ];
 }
 
 function buildInsights(trend: TrendSummary) {

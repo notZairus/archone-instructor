@@ -33,19 +33,20 @@ const menuItems = [
     title: "Home",
     href: "/home",
     icon: SquaresFourIcon,
-    match: (pathname: string) => pathname === "/home",
+    match: (pathname: string) => pathname.startsWith("/home"),
   },
   {
     title: "My Classes",
     href: "/classes",
     icon: ChalkboardIcon,
-    match: (pathname: string) => pathname === "/classes",
+    match: (pathname: string) => pathname.startsWith("/classes"),
   },
   {
     title: "Student Analysis",
     href: "/analyses",
     icon: FileTextIcon,
-    match: (pathname: string) => pathname === "/analyses",
+    match: (pathname: string) =>
+      pathname.startsWith("/analyses") || pathname.startsWith("/complexities"),
   },
 ];
 

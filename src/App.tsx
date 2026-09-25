@@ -18,6 +18,7 @@ import ComplexityShow from "./pages/student-analysis/show-complexity";
 
 import Classrooms from "./pages/classrooms/index";
 import ClassroomShow from "./pages/classrooms/show";
+import ClassroomAnalyses from "./pages/classrooms/analyses";
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
 
           <Route path="/classes" element={<Classrooms />} />
           <Route path="/classes/:id" element={<ClassroomShow />} />
+          <Route path="/classes/:id/analyses" element={<ClassroomAnalyses />} />
         </Route>
 
         <Route

@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -22,7 +23,18 @@ import { DEFAULT_PAGE_SIZE } from "@/constants/configs";
 import type { Analysis } from "@/types/global";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router";
-import { ArrowDownNarrowWide, ArrowUpWideNarrow } from "lucide-react";
+import {
+  ArrowDownNarrowWide,
+  ArrowLeft,
+  ArrowUpWideNarrow,
+  ArrowRight,
+  CalendarDays,
+  ClipboardList,
+  FileCode2,
+  Clock3,
+  Search,
+  Users,
+} from "lucide-react";
 
 interface StudentWithClassroom {
   $id: string;
@@ -110,6 +122,9 @@ const StudentAnalysis = () => {
 
   const sortedByFileName =
     selected.student && sortAnalysisByFileName(selected.student?.analyses);
+  const fileEntries: [string, Analysis[]][] = selected.student
+    ? Object.entries(sortedByFileName as Record<string, Analysis[]>)
+    : [];
 
   const totalPages = (() => {
     if (selected.student && !selected.fileAnalyses) {
@@ -153,16 +168,16 @@ const StudentAnalysis = () => {
     !selected.fileAnalyses &&
     (alphabeticalOrder === "asc"
       ? applyPagination(
-          filterAnalyses(Array.from(Object.entries(sortedByFileName)), query),
+          filterAnalyses(fileEntries, query) as [string, Analysis[]][],
           currentPage,
           pageSize,
-        ).sort((a, b) => a[0].localeCompare(b[0]))
+        ).sort(([a], [b]) => a.localeCompare(b))
       : applyPagination(
-          filterAnalyses(Array.from(Object.entries(sortedByFileName)), query),
+          filterAnalyses(fileEntries, query) as [string, Analysis[]][],
           currentPage,
           pageSize,
         )
-          .sort((a, b) => a[0].localeCompare(b[0]))
+          .sort(([a], [b]) => a.localeCompare(b))
           .reverse());
 
   const analysesToMap =
@@ -182,19 +197,26 @@ const StudentAnalysis = () => {
 
   return (
     <div className="min-h-screen bg-background p-6 md:p-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="flex flex-col gap-3 border-b pb-6">
+          <div className="flex items-center gap-2 text-sm font-medium text-primary">
+            <ClipboardList className="size-4" />
+            <span>Instructor workspace</span>
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
             Student Analysis
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
             Analysis records from students who are members of your classrooms.
           </p>
         </header>
 
-        <Card>
-          <CardHeader className="gap-3">
-            <CardTitle>Filters and Pagination</CardTitle>
+        <Card className="overflow-hidden">
+          <CardHeader className="gap-3 border-b bg-muted/20 pb-5">
+            <CardTitle className="flex items-center gap-2">
+              <Search className="size-5 text-primary" />
+              Find analysis records
+            </CardTitle>
             <CardDescription>
               Search by student, classroom, email, or file name.
             </CardDescription>
@@ -210,7 +232,7 @@ const StudentAnalysis = () => {
                     setQuery(event.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full bg-accent border"
+                  className="w-full bg-background"
                   placeholder="Search student, email, classroom, or file..."
                 />
               </div>
@@ -226,7 +248,7 @@ const StudentAnalysis = () => {
                 >
                   <SelectTrigger
                     id="analysis-page-size"
-                    className="w-full bg-accent border"
+                    className="w-full bg-background"
                   >
                     <SelectValue placeholder="Rows per page" />
                   </SelectTrigger>
@@ -239,18 +261,23 @@ const StudentAnalysis = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              {!selected.student && <p>Total results: {students.length}</p>}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {!selected.student && (
+                <Badge variant="secondary" className="font-normal">
+                  {students.length} students
+                </Badge>
+              )}
               {selected.student && !selected.fileAnalyses && (
-                <p>
-                  Total results:{" "}
-                  {Array.from(Object.entries(sortedByFileName)).length}
-                </p>
+                <Badge variant="secondary" className="font-normal">
+                  {fileEntries.length} files
+                </Badge>
               )}
               {selected.student && selected.fileAnalyses && (
-                <p>Total results: {selected.fileAnalyses.length}</p>
+                <Badge variant="secondary" className="font-normal">
+                  {selected.fileAnalyses.length} analyses
+                </Badge>
               )}
-              <p>
+              <p className="text-xs text-muted-foreground">
                 Page {currentPage} of {totalPages}
               </p>
             </div>
@@ -258,30 +285,43 @@ const StudentAnalysis = () => {
         </Card>
 
         <Card>
-          <CardHeader className="flex justify-between">
+          <CardHeader className="flex flex-col gap-4 border-b md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle>Analysis Records</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="size-5 text-primary" />
+                Analysis Records
+              </CardTitle>
               <CardDescription>
                 Newest analysis records are shown first.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-4">
-              <div
-                className="cursor-pointer text-xs font-bold text-muted-foreground hover:text-primary transition-colors duration-300"
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title={
+                  alphabeticalOrder === "asc"
+                    ? "Sort descending"
+                    : "Sort ascending"
+                }
+                aria-label={
+                  alphabeticalOrder === "asc"
+                    ? "Sort descending"
+                    : "Sort ascending"
+                }
                 onClick={() => {
                   setAlphabeticalOrder(
                     alphabeticalOrder === "asc" ? "desc" : "asc",
                   );
                 }}
               >
-                <div>
-                  {alphabeticalOrder === "asc" ? (
-                    <ArrowDownNarrowWide size={20} />
-                  ) : (
-                    <ArrowUpWideNarrow size={20} />
-                  )}
-                </div>
-              </div>
+                {alphabeticalOrder === "asc" ? (
+                  <ArrowDownNarrowWide />
+                ) : (
+                  <ArrowUpWideNarrow />
+                )}
+              </Button>
               <Button
                 variant={"outline"}
                 onClick={() => {
@@ -293,6 +333,7 @@ const StudentAnalysis = () => {
                 }}
                 disabled={!selected.student && !selected.fileAnalyses}
               >
+                <ArrowLeft />
                 Back
               </Button>
             </div>
@@ -323,14 +364,12 @@ const StudentAnalysis = () => {
                 <>
                   <div
                     key={student.$id}
-                    className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
-                    onClick={() => {
-                      console.log(student);
-                      handleSelectStudent(student);
-                    }}
+                    className="flex gap-4 rounded-lg border p-4 transition-colors duration-300 hover:bg-accent"
+                    onClick={() => handleSelectStudent(student)}
                   >
-                    <div className="flex-1">
-                      <p>{student.name}</p>
+                    <Users className="mt-1 size-5 text-primary" />
+                    <div className="flex-1 space-y-1">
+                      <p className="font-medium">{student.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {student.email}
                       </p>
@@ -338,7 +377,7 @@ const StudentAnalysis = () => {
 
                     <Separator orientation="vertical" />
 
-                    <div className="flex-1 ">
+                    <div className="hidden flex-1 space-y-1 md:block">
                       <p className="text-sm text-muted-foreground">
                         Student from:
                       </p>
@@ -347,9 +386,11 @@ const StudentAnalysis = () => {
 
                     <Separator orientation="vertical" />
 
-                    <div className="flex-1 ">
+                    <div className="flex items-center gap-2 md:block">
                       <p className="text-sm text-muted-foreground">Count:</p>
-                      <p>{student.analyses.length} Analysis</p>
+                      <Badge variant="secondary" className="font-normal">
+                        {student.analyses.length}
+                      </Badge>
                     </div>
                   </div>
                 </>
@@ -360,19 +401,21 @@ const StudentAnalysis = () => {
                 <>
                   <div
                     onClick={() => {
-                      console.log(analyses);
                       handleSelectFile(analyses);
                     }}
-                    className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
+                    className="flex gap-4 rounded-lg border p-4 transition-colors duration-300 hover:bg-accent"
                   >
-                    <div className="flex-1">
-                      <p>{fileName}</p>
+                    <FileCode2 className="mt-1 size-5 text-primary" />
+                    <div className="flex-1 space-y-1">
+                      <p className="font-medium">{fileName}</p>
                     </div>
 
                     <Separator orientation="vertical" />
 
-                    <div className="flex-1">
-                      <p>{analyses.length} analyses</p>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="font-normal">
+                        {analyses.length} analyses
+                      </Badge>
                     </div>
                   </div>
                 </>
@@ -391,7 +434,7 @@ const StudentAnalysis = () => {
                   <>
                     <div
                       key={analysis.$id}
-                      className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
+                      className="group flex cursor-pointer items-center gap-4 rounded-lg border bg-card/60 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() =>
                         navigate(`/analyses/${analysis.id}`, {
                           state: {
@@ -403,24 +446,27 @@ const StudentAnalysis = () => {
                         })
                       }
                     >
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          Analyzed on:
+                      <div className="flex-1 space-y-1">
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CalendarDays className="size-4 text-primary" />
+                          Analyzed on
                         </p>
-                        <p className="text-[1.05rem]">
+                        <p className="font-medium">
                           {formatDate(analysis.createdAt)}
                         </p>
                       </div>
                       <Separator orientation="vertical" />
 
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          Analyzed at:
+                      <div className="flex-1 space-y-1">
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock3 className="size-4 text-primary" />
+                          Analyzed at
                         </p>
-                        <p className="text-[1.05rem]">
+                        <p className="font-medium">
                           {formatTime(analysis.createdAt)}
                         </p>
                       </div>
+                      <ArrowRight className="size-5 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary" />
                     </div>
                   </>
                 ))}
@@ -438,7 +484,7 @@ const StudentAnalysis = () => {
                   <>
                     <div
                       key={analysis.$id}
-                      className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
+                      className="group flex cursor-pointer items-center gap-4 rounded-lg border bg-card/60 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() =>
                         navigate(`/analyses/${analysis.id}`, {
                           state: {
@@ -450,24 +496,27 @@ const StudentAnalysis = () => {
                         })
                       }
                     >
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          Analyzed on:
+                      <div className="flex-1 space-y-1">
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CalendarDays className="size-4 text-primary" />
+                          Analyzed on
                         </p>
-                        <p className="text-[1.05rem]">
+                        <p className="font-medium">
                           {formatDate(analysis.createdAt)}
                         </p>
                       </div>
                       <Separator orientation="vertical" />
 
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          Analyzed at:
+                      <div className="flex-1 space-y-1">
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock3 className="size-4 text-primary" />
+                          Analyzed at
                         </p>
-                        <p className="text-[1.05rem]">
+                        <p className="font-medium">
                           {formatTime(analysis.createdAt)}
                         </p>
                       </div>
+                      <ArrowRight className="size-5 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary" />
                     </div>
                   </>
                 ))}
@@ -487,7 +536,7 @@ const StudentAnalysis = () => {
                   <>
                     <div
                       key={analysis.$id}
-                      className="p-4 border hover:bg-accent transition-colors duration-300 rounded-lg flex gap-4"
+                      className="group flex cursor-pointer items-center gap-4 rounded-lg border bg-card/60 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() =>
                         navigate(`/complexities/${analysis.id}`, {
                           state: {
@@ -499,24 +548,27 @@ const StudentAnalysis = () => {
                         })
                       }
                     >
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          Analyzed on:
+                      <div className="flex-1 space-y-1">
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CalendarDays className="size-4 text-primary" />
+                          Analyzed on
                         </p>
-                        <p className="text-[1.05rem]">
+                        <p className="font-medium">
                           {formatDate(analysis.createdAt)}
                         </p>
                       </div>
                       <Separator orientation="vertical" />
 
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          Analyzed at:
+                      <div className="flex-1 space-y-1">
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock3 className="size-4 text-primary" />
+                          Analyzed at
                         </p>
-                        <p className="text-[1.05rem]">
+                        <p className="font-medium">
                           {formatTime(analysis.createdAt)}
                         </p>
                       </div>
+                      <ArrowRight className="size-5 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary" />
                     </div>
                   </>
                 ))}
