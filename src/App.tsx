@@ -28,9 +28,9 @@ function App() {
 
         <Route
           element={
-            // <AuthenticatedRoute>
-            <MainLayout />
-            // </AuthenticatedRoute>
+            <AuthenticatedRoute>
+              <MainLayout />
+            </AuthenticatedRoute>
           }
         >
           <Route path="/home" element={<Dashboard />} />
