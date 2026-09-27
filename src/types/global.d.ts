@@ -59,6 +59,16 @@ export interface Analysis extends Timestamps {
   issues?: AnalysisIssue[];
 }
 
+export interface Feedback extends Timestamps {
+  $id: string;
+  analysisId: string;
+  fileName: string;
+  instructorId: string;
+  studentId: string;
+  message: string;
+  highlightedCode: string;
+}
+
 export interface Complexity extends Timestamps {
   $id: string;
   id: string;

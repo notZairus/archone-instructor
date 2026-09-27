@@ -2,6 +2,7 @@ import {
   SquaresFourIcon,
   ChalkboardIcon,
   FileTextIcon,
+  ChatCircleTextIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
@@ -47,6 +48,12 @@ const menuItems = [
     icon: FileTextIcon,
     match: (pathname: string) =>
       pathname.startsWith("/analyses") || pathname.startsWith("/complexities"),
+  },
+  {
+    title: "My Feedbacks",
+    href: "/feedback",
+    icon: ChatCircleTextIcon,
+    match: (pathname: string) => pathname.startsWith("/feedback"),
   },
 ];
 

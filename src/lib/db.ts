@@ -406,6 +406,34 @@ export const sendFeedback = async (data: {
   });
 };
 
+export const getInstructorFeedback = async (
+  instructorId: string,
+  analysisId?: string,
+) => {
+  const feedbackRows = [];
+  let offset = 0;
+
+  while (true) {
+    const result = await tablesDB.listRows({
+      databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+      tableId: "6a994862001659d9de4d",
+      queries: [
+        Query.equal("instructorId", instructorId),
+        ...(analysisId ? [Query.equal("analysisId", analysisId)] : []),
+        Query.orderDesc("$createdAt"),
+        Query.limit(MAX_ROWS),
+        Query.offset(offset),
+      ],
+    });
+
+    feedbackRows.push(...result.rows);
+    if (result.rows.length < MAX_ROWS) break;
+    offset += MAX_ROWS;
+  }
+
+  return feedbackRows;
+};
+
 // HELPER /////////////////////////////////////////////////
 // HELPER /////////////////////////////////////////////////
 // HELPER /////////////////////////////////////////////////

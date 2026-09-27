@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Maximize2, MessageSquareText, Minimize2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { getAnalysisById, getClassroomStudents, getUserById } from "@/lib/db";
+import {
+  getAnalysisById,
+  getClassroomStudents,
+  getInstructorFeedback,
+  getUserById,
+} from "@/lib/db";
 import { useClassroomContext } from "@/contexts/classroomContext";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import {
@@ -29,7 +35,7 @@ import {
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { useThemeContext } from "@/contexts/use-theme-context";
 import { Separator } from "@/components/ui/separator";
-import type { Analysis, Issue, Classroom } from "@/types/global";
+import type { Analysis, Feedback, Issue, Classroom } from "@/types/global";
 import {
   TYPE_DISPLAY_ORDER,
   ISSUE_PRINCIPLE_BY_TITLE,
@@ -70,6 +76,15 @@ export default function StudentAnalysisShow() {
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [selectedLineEnd, setSelectedLineEnd] = useState<number | null>(null);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const [isFeedbackListOpen, setIsFeedbackListOpen] = useState(false);
+  const [analysisFeedback, setAnalysisFeedback] = useState<Feedback[]>([]);
+  const [expandedFeedbackIds, setExpandedFeedbackIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isFeedbackListLoading, setIsFeedbackListLoading] = useState(false);
+  const [feedbackListError, setFeedbackListError] = useState<string | null>(
+    null,
+  );
   const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -127,6 +142,28 @@ export default function StudentAnalysisShow() {
 
     void fetchAnalysis();
   }, [analysisId, classrooms, classroomName, studentEmail, studentName]);
+
+  useEffect(() => {
+    if (!analysisId || !authUser?.$id) {
+      return;
+    }
+
+    const fetchAnalysisFeedback = async () => {
+      setIsFeedbackListLoading(true);
+      setFeedbackListError(null);
+
+      try {
+        const rows = await getInstructorFeedback(authUser.$id, analysisId);
+        setAnalysisFeedback(rows as unknown as Feedback[]);
+      } catch {
+        setFeedbackListError("Could not load feedback for this analysis.");
+      } finally {
+        setIsFeedbackListLoading(false);
+      }
+    };
+
+    void fetchAnalysisFeedback();
+  }, [analysisId, authUser?.$id]);
 
   const sortedIssues = useMemo(() => {
     const issues = analysis?.issues || [];
@@ -298,8 +335,18 @@ export default function StudentAnalysisShow() {
         message: feedbackText.trim(),
         highlightedCode: selectedSnippet,
       });
-    } catch (error) {
+    } catch {
       toast.error("Failed to send feedback.");
+      return;
+    }
+
+    if (authUser?.$id && analysis?.id) {
+      try {
+        const rows = await getInstructorFeedback(authUser.$id, analysis.id);
+        setAnalysisFeedback(rows as unknown as Feedback[]);
+      } catch {
+        // The feedback was sent; the list can refresh on the next open.
+      }
     }
 
     toast.success("Feedback sent successfully.");
@@ -437,6 +484,91 @@ export default function StudentAnalysisShow() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isFeedbackListOpen} onOpenChange={setIsFeedbackListOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Feedback for this analysis</DialogTitle>
+            <DialogDescription>
+              Feedback you have given on this code analysis.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] px-4">
+            {isFeedbackListLoading ? (
+              <div className="space-y-3 pb-4">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : feedbackListError ? (
+              <p className="pb-4 text-sm text-destructive">
+                {feedbackListError}
+              </p>
+            ) : analysisFeedback.length === 0 ? (
+              <p className="pb-4 text-sm text-muted-foreground">
+                You have not given feedback on this analysis yet.
+              </p>
+            ) : (
+              <div className="space-y-3 pb-4">
+                {analysisFeedback.map((feedback) => (
+                  <div
+                    key={feedback.$id}
+                    className="rounded-lg border bg-card p-3"
+                  >
+                    <p className="whitespace-pre-wrap text-sm">
+                      {feedback.message}
+                    </p>
+                    <div className="relative mt-3 w-full">
+                      <pre
+                        className={`${
+                          expandedFeedbackIds.has(feedback.$id)
+                            ? "max-h-96"
+                            : "max-h-32"
+                        } w-full overflow-auto rounded-md bg-muted/60 p-3 pr-12 text-xs text-muted-foreground`}
+                      >
+                        {feedback.highlightedCode}
+                      </pre>
+                      <button
+                        type="button"
+                        title={
+                          expandedFeedbackIds.has(feedback.$id)
+                            ? "Collapse highlighted code"
+                            : "Show full highlighted code"
+                        }
+                        aria-label={
+                          expandedFeedbackIds.has(feedback.$id)
+                            ? "Collapse highlighted code"
+                            : "Show full highlighted code"
+                        }
+                        onClick={() =>
+                          setExpandedFeedbackIds((current) => {
+                            const next = new Set(current);
+                            if (next.has(feedback.$id)) {
+                              next.delete(feedback.$id);
+                            } else {
+                              next.add(feedback.$id);
+                            }
+                            return next;
+                          })
+                        }
+                        className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                      >
+                        {expandedFeedbackIds.has(feedback.$id) ? (
+                          <Minimize2 className="size-4" />
+                        ) : (
+                          <Maximize2 className="size-4" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {formatDateTime(feedback.$createdAt || "")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog for showing an issue */}
       {selectedIssue && (
         <Dialog open={isIssueDialogOpen} onOpenChange={setIsIssueDialogOpen}>
@@ -517,6 +649,14 @@ export default function StudentAnalysisShow() {
               onClick={() => navigate("/analyses")}
             >
               Back
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsFeedbackListOpen(true)}
+            >
+              <MessageSquareText />
+              Feedback ({analysisFeedback.length})
             </Button>
           </div>
 

@@ -19,6 +19,7 @@ import ComplexityShow from "./pages/student-analysis/show-complexity";
 import Classrooms from "./pages/classrooms/index";
 import ClassroomShow from "./pages/classrooms/show";
 import ClassroomAnalyses from "./pages/classrooms/analyses";
+import Feedback from "./pages/Feedback";
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
         >
           <Route path="/home" element={<Dashboard />} />
           <Route path="/analyses" element={<StudentAnalysis />} />
+          <Route path="/feedback" element={<Feedback />} />
 
           <Route path="/analyses/:analysisId" element={<GeneralOopShow />} />
           <Route
