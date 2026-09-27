@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
+import { Maximize2, MessageSquareText, Minimize2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -20,7 +21,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { getAnalysisById, getClassroomStudents, getUserById } from "@/lib/db";
+import {
+  getAnalysisById,
+  getClassroomStudents,
+  getInstructorFeedback,
+  getUserById,
+} from "@/lib/db";
 import { useClassroomContext } from "@/contexts/classroomContext";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import {
@@ -32,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import type {
   Complexity,
   ComplexityFunction,
+  Feedback,
   Issue,
   Classroom,
 } from "@/types/global";
@@ -73,6 +80,15 @@ export default function StudentAnalysisShow() {
     useState<ComplexityFunction | null>(null);
   const [selectedLineEnd, setSelectedLineEnd] = useState<number | null>(null);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const [isFeedbackListOpen, setIsFeedbackListOpen] = useState(false);
+  const [analysisFeedback, setAnalysisFeedback] = useState<Feedback[]>([]);
+  const [expandedFeedbackIds, setExpandedFeedbackIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isFeedbackListLoading, setIsFeedbackListLoading] = useState(false);
+  const [feedbackListError, setFeedbackListError] = useState<string | null>(
+    null,
+  );
   const [isFunctionDialogOpen, setIsFunctionDialogOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -139,6 +155,36 @@ export default function StudentAnalysisShow() {
 
     void fetchAnalysis();
   }, [analysisId, classrooms, classroomName, studentEmail, studentName]);
+
+  useEffect(() => {
+    if (!analysisId || !analysis?.fileName || !authUser?.$id) {
+      return;
+    }
+
+    const fetchAnalysisFeedback = async () => {
+      setIsFeedbackListLoading(true);
+      setFeedbackListError(null);
+
+      try {
+        const rows = await getInstructorFeedback({
+          instructorId: authUser.$id,
+          fileName: analysis.fileName,
+        });
+        setAnalysisFeedback(
+          filterFeedbackByCurrentCode(
+            rows as unknown as Feedback[],
+            analysis.code,
+          ),
+        );
+      } catch {
+        setFeedbackListError("Could not load feedback for this file.");
+      } finally {
+        setIsFeedbackListLoading(false);
+      }
+    };
+
+    void fetchAnalysisFeedback();
+  }, [analysis?.code, analysis?.fileName, analysisId, authUser?.$id]);
 
   const syntaxLanguage = useMemo(() => {
     if (!analysis) {
@@ -266,6 +312,24 @@ export default function StudentAnalysisShow() {
       });
     } catch {
       toast.error("Failed to send feedback.");
+      return;
+    }
+
+    if (authUser?.$id && analysis?.fileName) {
+      try {
+        const rows = await getInstructorFeedback({
+          instructorId: authUser.$id,
+          fileName: analysis.fileName,
+        });
+        setAnalysisFeedback(
+          filterFeedbackByCurrentCode(
+            rows as unknown as Feedback[],
+            analysis.code,
+          ),
+        );
+      } catch {
+        // The feedback was sent; the list can refresh on the next open.
+      }
     }
 
     toast.success("Feedback sent successfully.");
@@ -341,6 +405,91 @@ export default function StudentAnalysisShow() {
 
   return (
     <>
+      <Dialog open={isFeedbackListOpen} onOpenChange={setIsFeedbackListOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Feedback for this file</DialogTitle>
+            <DialogDescription>
+              Feedback you have given on this file.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] px-4">
+            {isFeedbackListLoading ? (
+              <div className="space-y-3 pb-4">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : feedbackListError ? (
+              <p className="pb-4 text-sm text-destructive">
+                {feedbackListError}
+              </p>
+            ) : analysisFeedback.length === 0 ? (
+              <p className="pb-4 text-sm text-muted-foreground">
+                You have not given feedback on this file yet.
+              </p>
+            ) : (
+              <div className="space-y-3 pb-4">
+                {analysisFeedback.map((feedback) => (
+                  <div
+                    key={feedback.$id}
+                    className="rounded-lg border bg-card p-3"
+                  >
+                    <p className="whitespace-pre-wrap text-sm">
+                      {feedback.message}
+                    </p>
+                    <div className="relative mt-3 w-full">
+                      <pre
+                        className={`${
+                          expandedFeedbackIds.has(feedback.$id)
+                            ? "max-h-96"
+                            : "max-h-32"
+                        } w-full overflow-auto rounded-md bg-muted/60 p-3 pr-12 text-xs text-muted-foreground`}
+                      >
+                        {feedback.highlightedCode}
+                      </pre>
+                      <button
+                        type="button"
+                        title={
+                          expandedFeedbackIds.has(feedback.$id)
+                            ? "Collapse highlighted code"
+                            : "Show full highlighted code"
+                        }
+                        aria-label={
+                          expandedFeedbackIds.has(feedback.$id)
+                            ? "Collapse highlighted code"
+                            : "Show full highlighted code"
+                        }
+                        onClick={() =>
+                          setExpandedFeedbackIds((current) => {
+                            const next = new Set(current);
+                            if (next.has(feedback.$id)) {
+                              next.delete(feedback.$id);
+                            } else {
+                              next.add(feedback.$id);
+                            }
+                            return next;
+                          })
+                        }
+                        className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                      >
+                        {expandedFeedbackIds.has(feedback.$id) ? (
+                          <Minimize2 className="size-4" />
+                        ) : (
+                          <Maximize2 className="size-4" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {formatDateTime(feedback.$createdAt || "")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog for giving feedback */}
       <Dialog
         open={isFeedbackDialogOpen}
@@ -478,6 +627,10 @@ export default function StudentAnalysisShow() {
             >
               Back
             </Button>
+            <Button type="button" onClick={() => setIsFeedbackListOpen(true)}>
+              <MessageSquareText />
+              Feedbacks ({analysisFeedback.length})
+            </Button>
           </div>
 
           <div className="grid gap-6 md:grid-cols-3 items-start">
@@ -532,7 +685,7 @@ export default function StudentAnalysisShow() {
                   <p className="text-muted-foreground">Time Complexity:</p>
                   <div className="w-full mt-4 flex items-center justify-between gap-8">
                     <div className="w-1/6 aspect-square rounded-full bg-accent flex items-center justify-center">
-                      <p className="text-center text-lg font-bold text-white">
+                      <p className="text-center text-lg font-bold text-foreground">
                         {slowestTimeComplexity?.notation}
                       </p>
                     </div>
@@ -548,7 +701,7 @@ export default function StudentAnalysisShow() {
                   <p className="text-muted-foreground">Space Complexity:</p>
                   <div className="w-full mt-4 flex items-center justify-between gap-8">
                     <div className="w-1/6 aspect-square rounded-full bg-accent flex items-center justify-center">
-                      <p className="text-center text-lg font-bold text-white">
+                      <p className="text-center text-lg font-bold text-foreground">
                         {slowestSpaceComplexity?.notation}
                       </p>
                     </div>
@@ -697,6 +850,17 @@ async function findClassroomNameForStudent(
   }
 
   return "";
+}
+
+function filterFeedbackByCurrentCode(
+  feedback: Feedback[],
+  analysisCode: string,
+) {
+  return feedback.filter(
+    (item) =>
+      Boolean(item.highlightedCode) &&
+      analysisCode.includes(item.highlightedCode),
+  );
 }
 
 function formatDateTime(value: string) {

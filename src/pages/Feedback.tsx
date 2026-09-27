@@ -55,9 +55,9 @@ const FeedbackPage = () => {
       setError(null);
 
       try {
-        const rows = (await getInstructorFeedback(
-          authUser.$id,
-        )) as unknown as Feedback[];
+        const rows = (await getInstructorFeedback({
+          instructorId: authUser.$id,
+        })) as unknown as Feedback[];
         const feedbackItems = await Promise.all(
           rows.map(async (item) => {
             const [student, analysis] = await Promise.all([

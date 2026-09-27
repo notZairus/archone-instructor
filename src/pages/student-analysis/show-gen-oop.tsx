@@ -144,7 +144,7 @@ export default function StudentAnalysisShow() {
   }, [analysisId, classrooms, classroomName, studentEmail, studentName]);
 
   useEffect(() => {
-    if (!analysisId || !authUser?.$id) {
+    if (!analysisId || !analysis?.fileName || !authUser?.$id) {
       return;
     }
 
@@ -153,8 +153,16 @@ export default function StudentAnalysisShow() {
       setFeedbackListError(null);
 
       try {
-        const rows = await getInstructorFeedback(authUser.$id, analysisId);
-        setAnalysisFeedback(rows as unknown as Feedback[]);
+        const rows = await getInstructorFeedback({
+          instructorId: authUser.$id,
+          fileName: analysis.fileName,
+        });
+        setAnalysisFeedback(
+          filterFeedbackByCurrentCode(
+            rows as unknown as Feedback[],
+            analysis.code,
+          ),
+        );
       } catch {
         setFeedbackListError("Could not load feedback for this analysis.");
       } finally {
@@ -163,7 +171,7 @@ export default function StudentAnalysisShow() {
     };
 
     void fetchAnalysisFeedback();
-  }, [analysisId, authUser?.$id]);
+  }, [analysis?.code, analysis?.fileName, analysisId, authUser?.$id]);
 
   const sortedIssues = useMemo(() => {
     const issues = analysis?.issues || [];
@@ -342,8 +350,16 @@ export default function StudentAnalysisShow() {
 
     if (authUser?.$id && analysis?.id) {
       try {
-        const rows = await getInstructorFeedback(authUser.$id, analysis.id);
-        setAnalysisFeedback(rows as unknown as Feedback[]);
+        const rows = await getInstructorFeedback({
+          instructorId: authUser.$id,
+          fileName: analysis.fileName,
+        });
+        setAnalysisFeedback(
+          filterFeedbackByCurrentCode(
+            rows as unknown as Feedback[],
+            analysis.code,
+          ),
+        );
       } catch {
         // The feedback was sent; the list can refresh on the next open.
       }
@@ -650,13 +666,9 @@ export default function StudentAnalysisShow() {
             >
               Back
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsFeedbackListOpen(true)}
-            >
+            <Button type="button" onClick={() => setIsFeedbackListOpen(true)}>
               <MessageSquareText />
-              Feedback ({analysisFeedback.length})
+              Feedbacks ({analysisFeedback.length})
             </Button>
           </div>
 
@@ -921,6 +933,17 @@ async function findClassroomNameForStudent(
   }
 
   return "";
+}
+
+function filterFeedbackByCurrentCode(
+  feedback: Feedback[],
+  analysisCode: string,
+) {
+  return feedback.filter(
+    (item) =>
+      Boolean(item.highlightedCode) &&
+      analysisCode.includes(item.highlightedCode),
+  );
 }
 
 function formatDateTime(value: string) {

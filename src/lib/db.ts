@@ -406,10 +406,15 @@ export const sendFeedback = async (data: {
   });
 };
 
-export const getInstructorFeedback = async (
-  instructorId: string,
-  analysisId?: string,
-) => {
+export const getInstructorFeedback = async ({
+  instructorId,
+  analysisId,
+  fileName,
+}: {
+  instructorId?: string;
+  analysisId?: string;
+  fileName?: string;
+}) => {
   const feedbackRows = [];
   let offset = 0;
 
@@ -420,6 +425,7 @@ export const getInstructorFeedback = async (
       queries: [
         Query.equal("instructorId", instructorId),
         ...(analysisId ? [Query.equal("analysisId", analysisId)] : []),
+        ...(fileName ? [Query.equal("fileName", fileName)] : []),
         Query.orderDesc("$createdAt"),
         Query.limit(MAX_ROWS),
         Query.offset(offset),
