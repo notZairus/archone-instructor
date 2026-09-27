@@ -359,6 +359,16 @@ const StudentAnalysis = () => {
               </div>
             )}
 
+            {selected.student &&
+              !selected.fileAnalyses &&
+              selected.student.analyses.length === 0 && (
+                <div className="flex items-center justify-center">
+                  <p className="text-sm text-muted-foreground">
+                    This student has no analyses yet.
+                  </p>
+                </div>
+              )}
+
             {studentsToMap &&
               studentsToMap.map((student) => (
                 <>
