@@ -799,7 +799,7 @@ export const StudentStatsView = ({
 
   return (
     <div className="space-y-4 text-base">
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Top Issues</CardTitle>
@@ -832,60 +832,6 @@ export const StudentStatsView = ({
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Top Issues Chart</CardTitle>
-            <CardDescription>
-              Highest-frequency issue patterns by percentage.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-2">
-            {topIssueChartData.length ? (
-              <ChartContainer config={studentTopIssuesChartConfig}>
-                <BarChart
-                  data={topIssueChartData}
-                  margin={{ top: 8, right: 12, left: 12, bottom: 8 }}
-                >
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="issue" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} width={28} />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(_, __, item) => [
-                          `${item.payload.percent.toFixed(2)}%`,
-                        ]}
-                      />
-                    }
-                  />
-                  <Bar dataKey="percent" fill="#f56565" radius={0} />
-                </BarChart>
-              </ChartContainer>
-            ) : (
-              <p className="text-base text-muted-foreground">
-                No top issue data available for charting.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Separator />
-
-      <div className="grid gap-3 md:grid-cols-2 items-start">
-        <Card>
-          <CardHeader>
-            <CardTitle>Progress Insights</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {stats.insights.map((insight) => (
-              <p key={insight} className="text-md">
-                -- {insight}
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle>Recommendations</CardTitle>
@@ -914,6 +860,47 @@ export const StudentStatsView = ({
                 ))}
               </div>
             </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Separator />
+
+      <div className="grid gap-3 md:grid-cols-2 items-start ">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Top Issues Chart</CardTitle>
+            <CardDescription>
+              Highest-frequency issue patterns by percentage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-8">
+            {topIssueChartData.length ? (
+              <ChartContainer config={studentTopIssuesChartConfig}>
+                <BarChart
+                  data={topIssueChartData}
+                  margin={{ top: 8, right: 12, left: 12, bottom: 8 }}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="issue" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} width={28} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(_, __, item) => [
+                          `${item.payload.percent.toFixed(2)}%`,
+                        ]}
+                      />
+                    }
+                  />
+                  <Bar dataKey="percent" fill="#f56565" radius={0} />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <p className="text-base text-muted-foreground">
+                No top issue data available for charting.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1187,13 +1174,13 @@ function aggregateOtherIssues(issues: TopIssue[], limit = 5): TopIssue[] {
 function buildInsights(trend: TrendSummary) {
   const insights: string[] = [];
 
-  if (trend.hasEnoughData && trend.direction === "improving") {
-    insights.push("Fewer issues in recent submissions.");
-  } else if (trend.hasEnoughData && trend.direction === "declining") {
-    insights.push("Issue density increased in recent submissions.");
-  } else {
-    insights.push("Need more weekly history to compute a trend.");
-  }
+  // if (trend.hasEnoughData && trend.direction === "improving") {
+  //   insights.push("Fewer issues in recent submissions.");
+  // } else if (trend.hasEnoughData && trend.direction === "declining") {
+  //   insights.push("Issue density increased in recent submissions.");
+  // } else {
+  //   insights.push("Need more weekly history to compute a trend.");
+  // }
 
   const recentNesting = average(trend.recent.map((item) => item.avgNesting));
   const previousNesting = average(
