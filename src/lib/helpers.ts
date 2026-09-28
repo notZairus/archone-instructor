@@ -34,3 +34,7 @@ export function removeDuplicatedIssues(issues: Issue[]) {
     return !hasASubDuplicatedIssue;
   });
 }
+
+export function cleanFileName(fileName: string) {
+  return fileName.replaceAll("\\", "/").split("/").pop();
+}

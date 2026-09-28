@@ -97,3 +97,14 @@ export interface ComplexityFunction extends Timestamps {
     class: string;
   } | null;
 }
+
+export interface ClassroomFolder {
+  id: string;
+  name: string;
+  description: string;
+  targetFileNamePrefix: string;
+  analyses?: Analysis[];
+  submissions?: any[];
+  updatedAt: string;
+  classroom?: Classroom;
+}

@@ -391,11 +391,7 @@ export default function StudentAnalysisShow() {
     return (
       <div className="min-h-screen bg-background p-6 md:p-10">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/analyses")}
-          >
+          <Button type="button" variant="outline" onClick={() => navigate(-1)}>
             Back
           </Button>
           <Card>
@@ -412,11 +408,7 @@ export default function StudentAnalysisShow() {
     return (
       <div className="min-h-screen bg-background p-6 md:p-10">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/analyses")}
-          >
+          <Button type="button" variant="outline" onClick={() => navigate(-1)}>
             Back
           </Button>
           <Card>
@@ -662,7 +654,7 @@ export default function StudentAnalysisShow() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate("/analyses")}
+              onClick={() => navigate(-1)}
             >
               Back
             </Button>

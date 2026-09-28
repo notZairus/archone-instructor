@@ -1,6 +1,6 @@
 import { tablesDB } from "./appwrite";
 import { Query, ID } from "appwrite";
-import type { Classroom, Student, Issue, Analysis } from "@/types/global";
+import type { Classroom, Student, Issue } from "@/types/global";
 import { removeDuplicatedIssues } from "./helpers";
 
 const MAX_ROWS = 100;
@@ -82,6 +82,78 @@ export const saveClassroom = async (
   });
 
   return newClassroom;
+};
+
+export const createFolder = async ({
+  name,
+  description,
+  targetFileNamePrefix,
+  classroomId,
+}: {
+  name: string;
+  description?: string;
+  targetFileNamePrefix: string;
+  classroomId: string;
+}) => {
+  return tablesDB.createRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "6aba1d8e001377a01819",
+    rowId: ID.unique(),
+    data: {
+      name,
+      description,
+      targetFileNamePrefix,
+      classroomId,
+    },
+  });
+};
+
+export const getFolders = async () => {
+  const result = await tablesDB.listRows({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "6aba1d8e001377a01819",
+    queries: [Query.limit(MAX_ROWS), Query.orderDesc("$createdAt")],
+  });
+
+  return result.rows;
+};
+
+export const getFoldersByClassroomId = async (classroomId: string) => {
+  const result = await tablesDB.listRows({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "6aba1d8e001377a01819",
+    queries: [
+      Query.equal("classroomId", classroomId),
+      Query.limit(MAX_ROWS),
+      Query.orderDesc("$createdAt"),
+    ],
+  });
+
+  return result.rows;
+};
+
+export const updateFolder = async (
+  folderId: string,
+  data: {
+    name: string;
+    description: string;
+    targetFileNamePrefix: string;
+  },
+) => {
+  return tablesDB.updateRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "6aba1d8e001377a01819",
+    rowId: folderId,
+    data,
+  });
+};
+
+export const deleteFolder = async (folderId: string) => {
+  return tablesDB.deleteRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "6aba1d8e001377a01819",
+    rowId: folderId,
+  });
 };
 
 export const getClassroomsByUserId = async (userId: string) => {

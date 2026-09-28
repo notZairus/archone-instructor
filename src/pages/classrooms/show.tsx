@@ -57,6 +57,7 @@ import {
   BarChart3,
   FileText,
   RefreshCw,
+  Folders,
   Users,
 } from "lucide-react";
 
@@ -417,12 +418,12 @@ const ClassroomShow = () => {
 
   return (
     <div className="min-h-screen bg-background p-6 md:p-10">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <header className="flex flex-col gap-5 border-b pb-6 md:flex-row md:items-end md:justify-between">
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-primary">
               <BarChart3 className="size-4" />
-              <span>Classroom overview</span>
+              <span>Classroom Overview</span>
             </div>
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
               {classroom.name}
@@ -432,6 +433,12 @@ const ClassroomShow = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button asChild size="lg">
+              <Link to={`/classes/${classroom.$id}/folders`}>
+                <Folders />
+                Show Folders
+              </Link>
+            </Button>
             <Button asChild size="lg">
               <Link to={`/classes/${classroom.$id}/analyses`}>
                 <FileText />
@@ -475,32 +482,6 @@ const ClassroomShow = () => {
               <p className="text-sm text-destructive">{classStatsError}</p>
             ) : classStats ? (
               <>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <Card size="sm" className="border-primary/20 bg-primary/3">
-                    <CardContent className="space-y-1 p-3">
-                      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <BarChart3 className="size-4 text-primary" />
-                        Class Quality Score
-                      </p>
-                      <p className="text-xl font-semibold">
-                        {classStats.qualityScore} / 100
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <Card size="sm" className="border-primary/20 bg-primary/3">
-                    <CardContent className="space-y-1 p-3">
-                      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <AlertTriangle className="size-4 text-amber-500" />
-                        Total Issues
-                      </p>
-                      <p className="text-xl font-semibold">
-                        {classStats.totalIssues}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
                 <Card className="border-dashed">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -735,7 +716,7 @@ const ClassroomShow = () => {
   );
 };
 
-type AnalysisRecord = {
+export type AnalysisRecord = {
   createdAt?: string;
   mode?: "general" | "oop";
   issues?: Array<{ title?: string; type?: string; line?: number }>;
@@ -763,7 +744,7 @@ type TopIssue = {
   percent: number;
 };
 
-type StudentAnalytics = {
+export type StudentAnalytics = {
   qualityScore: number;
   totalAnalyses: number;
   totalIssues: number;
@@ -783,7 +764,11 @@ type StudentRiskEntry = {
   reasons: string[];
 };
 
-const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
+export const StudentStatsView = ({
+  stats,
+}: {
+  stats: StudentAnalytics | null;
+}) => {
   if (!stats) {
     return (
       <Card>
@@ -814,21 +799,6 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
 
   return (
     <div className="space-y-4 text-base">
-      <div className="grid gap-3 md:grid-cols-2">
-        <Card size="sm">
-          <CardContent className="space-y-1 p-3">
-            <p className="text-sm text-muted-foreground">Code Quality Score</p>
-            <p className="text-xl font-semibold">{stats.qualityScore} / 100</p>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardContent className="space-y-1 p-3">
-            <p className="text-sm text-muted-foreground">Files Analyzed</p>
-            <p className="text-xl font-semibold">{stats.totalAnalyses}</p>
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="grid gap-3 md:grid-cols-3">
         <Card>
           <CardHeader>
@@ -951,7 +921,7 @@ const StudentStatsView = ({ stats }: { stats: StudentAnalytics | null }) => {
   );
 };
 
-function buildStudentAnalytics(
+export function buildStudentAnalytics(
   analyses: AnalysisRecord[],
 ): StudentAnalytics | null {
   if (!analyses.length) {
@@ -1307,22 +1277,6 @@ function computeStudentRisk(analytics: StudentAnalytics | null): {
     riskScore: clamp(riskScore, 0, 100),
     reasons: finalReasons,
   };
-}
-
-function formatTrend(trend: TrendSummary) {
-  if (!trend.hasEnoughData) {
-    return "Stable (not enough data this week)";
-  }
-
-  if (trend.direction === "improving") {
-    return `Up Improving (+${trend.percent}% this week)`;
-  }
-
-  if (trend.direction === "declining") {
-    return `Down Declining (-${trend.percent}% this week)`;
-  }
-
-  return "Stable (0% this week)";
 }
 
 function average(values: number[]) {

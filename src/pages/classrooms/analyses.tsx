@@ -156,7 +156,7 @@ const ClassroomAnalyses = () => {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-primary">
               <ClipboardList className="size-4" />
-              <span>Classroom workspace</span>
+              <span>Classroom Workspace</span>
             </div>
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
               {classroom.name} Analyses

@@ -20,6 +20,8 @@ import Classrooms from "./pages/classrooms/index";
 import ClassroomShow from "./pages/classrooms/show";
 import ClassroomAnalyses from "./pages/classrooms/analyses";
 import Feedback from "./pages/Feedback";
+import ClassroomFolders from "./pages/classrooms/folders/index";
+import ClassroomFoldersShow from "./pages/classrooms/folders/show";
 
 function App() {
   return (
@@ -47,6 +49,19 @@ function App() {
           <Route path="/classes" element={<Classrooms />} />
           <Route path="/classes/:id" element={<ClassroomShow />} />
           <Route path="/classes/:id/analyses" element={<ClassroomAnalyses />} />
+          <Route path="/classes/:id/folders" element={<ClassroomFolders />} />
+          <Route
+            path="/classrooms/:id/folders"
+            element={<ClassroomFolders />}
+          />
+          <Route
+            path="/classes/:classroomId/folders/:folderId"
+            element={<ClassroomFoldersShow />}
+          />
+          <Route
+            path="/classrooms/:classroomId/folders/:folderId"
+            element={<ClassroomFoldersShow />}
+          />
         </Route>
 
         <Route
