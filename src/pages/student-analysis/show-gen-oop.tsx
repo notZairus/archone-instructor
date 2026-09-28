@@ -744,8 +744,7 @@ export default function StudentAnalysisShow() {
                           Poor Quality
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Your code is of poor quality and needs significant
-                          improvements.
+                          Your coding practice needs significant improvements.
                         </p>
                       </div>
                     )}

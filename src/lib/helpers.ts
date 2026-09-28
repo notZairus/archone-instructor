@@ -1,4 +1,4 @@
-import type { Issue } from "@/types/global";
+import type { Analysis, Issue } from "@/types/global";
 
 export const createClassroomCode = (name: string) => {
   const classToken = name
@@ -37,4 +37,46 @@ export function removeDuplicatedIssues(issues: Issue[]) {
 
 export function cleanFileName(fileName: string) {
   return fileName.replaceAll("\\", "/").split("/").pop();
+}
+
+export function tokenizeCode(code: string) {
+  const tokens: string[] = [];
+  const tokenPattern =
+    /\/\/[^\r\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|===|!==|=>|==|!=|<=|>=|&&|\|\||\+\+|--|\+=|-=|\*=|\/=|\*\*|[A-Za-z_$][\w$]*|\d+(?:\.\d+)?|\S/g;
+
+  for (const match of code.matchAll(tokenPattern)) {
+    const token = match[0];
+
+    if (token.startsWith("//") || token.startsWith("/*")) {
+      continue;
+    }
+
+    tokens.push(token);
+  }
+
+  return tokens;
+}
+
+export function normalizeCodeForSimilarity(code: string) {
+  return tokenizeCode(code).join(" ");
+}
+
+export function normalizeAnalysisForSimilarity(analysis: Analysis) {
+  const excludedKeys = new Set([
+    "$id",
+    "userId",
+    "id",
+    "$createdAt",
+    "$updatedAt",
+  ]);
+  const analysisData = Object.fromEntries(
+    Object.entries(analysis).filter(([key]) => !excludedKeys.has(key)),
+  );
+
+  return normalizeCodeForSimilarity(
+    JSON.stringify({
+      ...analysisData,
+      fileName: cleanFileName(analysis.fileName),
+    }),
+  );
 }

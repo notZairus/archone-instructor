@@ -108,3 +108,7 @@ export interface ClassroomFolder {
   updatedAt: string;
   classroom?: Classroom;
 }
+
+declare module "string-similarity" {
+  export function compareTwoStrings(first: string, second: string): number;
+}
