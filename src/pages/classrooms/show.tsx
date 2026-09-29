@@ -523,17 +523,24 @@ const ClassroomShow = () => {
                         {displayedTopIssues.length ? (
                           <div className="space-y-2">
                             {displayedTopIssues.map((issue, index) => (
-                              <p
+                              <div
                                 key={issue.title}
-                                className="flex items-center justify-between"
+                                className="flex items-start justify-between gap-4"
                               >
                                 <span>
-                                  {index + 1}. {issue.title}
+                                  <span className="block">
+                                    {index + 1}. {issue.title}
+                                  </span>
+                                  {issue.description && (
+                                    <span className="mt-1 block text-sm text-muted-foreground">
+                                      {issue.description}
+                                    </span>
+                                  )}
                                 </span>
                                 <span className="font-medium">
                                   {issue.percent.toFixed(2)}%
                                 </span>
-                              </p>
+                              </div>
                             ))}
                           </div>
                         ) : (
@@ -719,7 +726,14 @@ const ClassroomShow = () => {
 export type AnalysisRecord = {
   createdAt?: string;
   mode?: "general" | "oop";
-  issues?: Array<{ title?: string; type?: string; line?: number }>;
+  issues?: Array<{
+    title?: string;
+    type?: string;
+    line?: number;
+    message?: string;
+    why?: string;
+    suggestion?: string;
+  }>;
   functions?: Array<{
     complexity?: number;
     maxNesting?: number;
@@ -740,6 +754,7 @@ type TrendSummary = {
 
 type TopIssue = {
   title: string;
+  description: string;
   count: number;
   percent: number;
 };
@@ -811,17 +826,24 @@ export const StudentStatsView = ({
             {stats.topIssueTitles.length ? (
               <div className="space-y-2">
                 {stats.topIssueTitles.map((issue, index) => (
-                  <p
+                  <div
                     key={issue.title}
-                    className="flex items-center justify-between"
+                    className="flex items-start justify-between gap-4"
                   >
-                    <span className="font-bold ">
-                      {index + 1}. {issue.title}
+                    <span>
+                      <span className="block font-bold text-[1.02rem]">
+                        {index + 1}. {issue.title}
+                      </span>
+                      {issue.description && (
+                        <span className="mt-1 block text-sm text-muted-foreground">
+                          {issue.description}
+                        </span>
+                      )}
                     </span>
                     <span className="font-medium">
                       {issue.percent.toFixed(2)}%
                     </span>
-                  </p>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -917,6 +939,7 @@ export function buildStudentAnalytics(
 
   const issueTypeCounts: Record<string, number> = {};
   const issueTitleCounts: Record<string, number> = {};
+  const issueDescriptions: Record<string, string> = {};
   const datedAnalyses: Array<{
     createdAt: string;
     issuesCount: number;
@@ -942,6 +965,8 @@ export function buildStudentAnalytics(
       const title = issue.title || "Unknown Issue";
       issueTypeCounts[type] = (issueTypeCounts[type] || 0) + 1;
       issueTitleCounts[title] = (issueTitleCounts[title] || 0) + 1;
+      issueDescriptions[title] =
+        issue.message || issue.why || issue.suggestion || "";
     }
 
     for (const fn of functions) {
@@ -974,6 +999,7 @@ export function buildStudentAnalytics(
   const topIssueTitles = toSortedIssuePercentages(
     issueTitleCounts,
     totalIssues,
+    issueDescriptions,
   );
 
   return {
@@ -1141,11 +1167,13 @@ function averageDensity(
 function toSortedIssuePercentages(
   countsMap: Record<string, number>,
   totalCount: number,
+  descriptionsMap: Record<string, string> = {},
   limit = Infinity,
 ): TopIssue[] {
   return Object.entries(countsMap)
     .map(([title, count]) => ({
       title,
+      description: descriptionsMap[title] || "",
       count,
       percent: totalCount > 0 ? (count / totalCount) * 100 : 0,
     }))
@@ -1165,6 +1193,7 @@ function aggregateOtherIssues(issues: TopIssue[], limit = 5): TopIssue[] {
     ...topIssues,
     {
       title: "Other Issues",
+      description: "Other recurring issues found in the submissions.",
       count: otherIssues.reduce((sum, issue) => sum + issue.count, 0),
       percent: otherIssues.reduce((sum, issue) => sum + issue.percent, 0),
     },

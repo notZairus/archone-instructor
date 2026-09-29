@@ -9,12 +9,14 @@ import {
   Copy,
   FileCode2,
   FolderOpen,
+  History,
   ShieldAlert,
   Users,
 } from "lucide-react";
 import { compareTwoStrings } from "string-similarity";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -47,6 +49,7 @@ import {
 
 type StudentFolderAnalysis = Student & {
   analyses: Analysis[];
+  allAnalyses: Analysis[];
 };
 
 type StudentFolderData = StudentFolderAnalysis & {
@@ -90,6 +93,10 @@ const FolderShow = () => {
   const [selectedSimilarityGroup, setSelectedSimilarityGroup] =
     useState<SimilarityGroup | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [expandedStudentIds, setExpandedStudentIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -215,8 +222,15 @@ const FolderShow = () => {
     );
   };
 
-  const analysisRows: FolderAnalysisRow[] = students.flatMap((student) =>
-    student.analyses.map((analysis) => ({ student, analysis })),
+  const normalizedStudentSearch = studentSearch.trim().toLowerCase();
+  const filteredStudents = normalizedStudentSearch
+    ? students.filter((student) =>
+        student.name.toLowerCase().includes(normalizedStudentSearch),
+      )
+    : students;
+
+  const analysisRows: FolderAnalysisRow[] = filteredStudents.flatMap(
+    (student) => student.analyses.map((analysis) => ({ student, analysis })),
   );
   const totalPages = Math.max(1, Math.ceil(analysisRows.length / PAGE_SIZE));
   const pageStart = (Math.min(currentPage, totalPages) - 1) * PAGE_SIZE;
@@ -228,7 +242,7 @@ const FolderShow = () => {
     visibleAnalysesByStudent.set(student.$id, [...analyses, analysis]);
   });
 
-  const paginatedStudents = students
+  const paginatedStudents = filteredStudents
     .map((student) => ({
       ...student,
       analyses: visibleAnalysesByStudent.get(student.$id) || [],
@@ -439,17 +453,31 @@ const FolderShow = () => {
 
         <Card className="overflow-hidden">
           <CardHeader className="border-b bg-muted/20 pb-5">
-            <CardTitle className="flex items-center gap-2">
-              <FileCode2 className="size-5 text-primary" />
-              Matching Student Analyses
-            </CardTitle>
-            <CardDescription>
-              Files starting with{" "}
-              <span className="font-medium text-foreground">
-                {folder?.targetFileNamePrefix || "..."}
-              </span>{" "}
-              appear here.
-            </CardDescription>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCode2 className="size-5 text-primary" />
+                  Matching Student Analyses
+                </CardTitle>
+                <CardDescription className="mt-2">
+                  Files starting with{" "}
+                  <span className="font-medium text-foreground">
+                    {folder?.targetFileNamePrefix || "..."}
+                  </span>{" "}
+                  appear here.
+                </CardDescription>
+              </div>
+              <Input
+                value={studentSearch}
+                placeholder="Search student name..."
+                aria-label="Search student name"
+                className="md:max-w-xs"
+                onChange={(event) => {
+                  setStudentSearch(event.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {isLoading ? (
@@ -463,42 +491,121 @@ const FolderShow = () => {
               <>
                 {paginatedStudents.map((student) => (
                   <div key={student.$id} className="rounded-lg border p-4">
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{student.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {student.email}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">
-                        {student.analyses.length}{" "}
-                        {student.analyses.length === 1
-                          ? "analysis"
-                          : "analyses"}
-                      </Badge>
-                    </div>
-                    <div className="space-y-2">
-                      {student.analyses.map((analysis) => (
-                        <button
-                          key={analysis.id}
-                          type="button"
-                          className="group flex w-full items-center gap-3 rounded-md border bg-card/60 p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent"
-                          onClick={() => openAnalysis(analysis, student)}
-                        >
-                          <FileCode2 className="size-5 shrink-0 text-primary" />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-medium">
-                              {analysis.fileName}
-                            </span>
-                            <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <CalendarDays className="size-3.5" />
-                              {formatDate(analysis.createdAt)}
-                            </span>
-                          </span>
-                          <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-                        </button>
-                      ))}
-                    </div>
+                    {(() => {
+                      const latestAnalysisIds = new Set(
+                        student.analyses.map((analysis) => analysis.id),
+                      );
+                      const pastAnalyses = student.allAnalyses
+                        .filter(
+                          (analysis) => !latestAnalysisIds.has(analysis.id),
+                        )
+                        .sort(
+                          (first, second) =>
+                            new Date(
+                              second.updatedAt || second.createdAt,
+                            ).getTime() -
+                            new Date(
+                              first.updatedAt || first.createdAt,
+                            ).getTime(),
+                        );
+                      const isExpanded = expandedStudentIds.has(student.$id);
+
+                      return (
+                        <>
+                          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="font-medium">{student.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {student.email}
+                              </p>
+                            </div>
+                            <Badge variant="secondary">
+                              {student.analyses.length}{" "}
+                              {student.analyses.length === 1
+                                ? "analysis"
+                                : "analyses"}
+                            </Badge>
+                          </div>
+                          <div className="space-y-2">
+                            {student.analyses.map((analysis) => (
+                              <button
+                                key={analysis.id}
+                                type="button"
+                                className="group flex w-full items-center gap-3 rounded-md border bg-card/60 p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent"
+                                onClick={() => openAnalysis(analysis, student)}
+                              >
+                                <FileCode2 className="size-5 shrink-0 text-primary" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate font-medium">
+                                    {analysis.fileName}
+                                  </span>
+                                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <CalendarDays className="size-3.5" />
+                                    {formatDate(analysis.createdAt)}
+                                  </span>
+                                </span>
+                                <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+                              </button>
+                            ))}
+                          </div>
+                          {pastAnalyses.length > 0 && (
+                            <>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="mt-3 px-0 text-primary hover:bg-transparent hover:text-primary/80"
+                                onClick={() =>
+                                  setExpandedStudentIds((current) => {
+                                    const next = new Set(current);
+                                    if (next.has(student.$id)) {
+                                      next.delete(student.$id);
+                                    } else {
+                                      next.add(student.$id);
+                                    }
+                                    return next;
+                                  })
+                                }
+                              >
+                                <History />
+                                {isExpanded
+                                  ? "Hide past analyses"
+                                  : `Show ${pastAnalyses.length} past ${
+                                      pastAnalyses.length === 1
+                                        ? "analysis"
+                                        : "analyses"
+                                    }`}
+                              </Button>
+                              {isExpanded && (
+                                <div className="mt-2 space-y-2 border-t pt-3">
+                                  {pastAnalyses.map((analysis) => (
+                                    <button
+                                      key={analysis.id}
+                                      type="button"
+                                      className="group flex w-full items-center gap-3 rounded-md border bg-muted/30 p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent"
+                                      onClick={() =>
+                                        openAnalysis(analysis, student)
+                                      }
+                                    >
+                                      <FileCode2 className="size-5 shrink-0 text-muted-foreground" />
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block truncate font-medium">
+                                          {analysis.fileName}
+                                        </span>
+                                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                                          <CalendarDays className="size-3.5" />
+                                          {formatDate(analysis.createdAt)}
+                                        </span>
+                                      </span>
+                                      <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
                 {totalPages > 1 && (
@@ -702,7 +809,7 @@ function findSimilarityGroups(students: StudentFolderData[]) {
     groups.push({
       students: groupStudentIds
         .map((id) => studentsById.get(id))
-        .filter((student): student is Student => Boolean(student)),
+        .filter(Boolean) as Student[],
       matches: groupMatches.sort((first, second) => second.score - first.score),
     });
   }

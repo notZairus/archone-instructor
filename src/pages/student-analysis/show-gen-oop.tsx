@@ -741,7 +741,7 @@ export default function StudentAnalysisShow() {
                     {qualityScore < 50 && (
                       <div>
                         <p className="text-lg font-medium text-red-600">
-                          Poor Quality
+                          Needs Improvement
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Your coding practice needs significant improvements.
