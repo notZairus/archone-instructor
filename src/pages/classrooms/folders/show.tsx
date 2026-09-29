@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Copy,
   FileCode2,
+  Folder,
   FolderOpen,
   History,
   ShieldAlert,
@@ -338,7 +339,10 @@ const FolderShow = () => {
         {folderAnalytics && (
           <Card>
             <CardHeader className="border-b bg-muted/20 pb-5">
-              <CardTitle>Folder Analytics</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Folder className="size-5 text-primary" />
+                Folder Analytics
+              </CardTitle>
               <CardDescription>
                 Aggregate analytics from every matching analysis in this folder,
                 including analyses hidden from the list below.
