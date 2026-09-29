@@ -96,20 +96,26 @@ const FolderShow = () => {
   useEffect(() => {
     if (!classroomId || !folderId) return;
 
+    let isMounted = true;
+    let isLoadingRequest = false;
+    let isInitialLoad = true;
+
     const loadFolderAnalyses = async () => {
-      setIsLoading(true);
-      setError(null);
-      setCurrentPage(1);
+      if (isLoadingRequest) return;
+
+      isLoadingRequest = true;
+
+      if (isInitialLoad) {
+        setIsLoading(true);
+        setCurrentPage(1);
+      }
 
       try {
         const folderRow = (await getFoldersByClassroomId(classroomId)).find(
           (row) => row.$id === folderId,
         );
 
-        if (!folderRow) {
-          setError("Could not find this folder.");
-          return;
-        }
+        if (!folderRow || !isMounted) return;
 
         const selectedFolder = {
           id: folderRow.$id,
@@ -145,6 +151,8 @@ const FolderShow = () => {
             }),
         );
 
+        if (!isMounted) return;
+
         setFolderAnalytics(
           buildStudentAnalytics(
             studentsWithMatches.flatMap(
@@ -152,6 +160,7 @@ const FolderShow = () => {
             ) as unknown as AnalysisRecord[],
           ),
         );
+
         setSimilarityGroups(
           findSimilarityGroups(
             studentsWithMatches.filter(
@@ -159,17 +168,36 @@ const FolderShow = () => {
             ),
           ),
         );
+
         setStudents(
           studentsWithMatches.filter((student) => student.analyses.length > 0),
         );
+
+        setError(null);
       } catch {
-        setError("Could not load this folder right now.");
+        if (isMounted) {
+          setError("Could not load this folder right now.");
+        }
       } finally {
-        setIsLoading(false);
+        isLoadingRequest = false;
+        isInitialLoad = false;
+
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     void loadFolderAnalyses();
+
+    const pollingInterval = window.setInterval(() => {
+      void loadFolderAnalyses();
+    }, 10_000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(pollingInterval);
+    };
   }, [classroomId, folderId]);
 
   const openAnalysis = (analysis: Analysis, student: Student) => {
