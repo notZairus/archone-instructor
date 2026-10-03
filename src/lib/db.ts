@@ -476,6 +476,15 @@ export const sendFeedback = async (data: {
     rowId: ID.unique(),
     data,
   });
+
+  await tablesDB.updateRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "users",
+    rowId: data.studentId,
+    data: {
+      notify: true,
+    },
+  });
 };
 
 export const getInstructorFeedback = async ({

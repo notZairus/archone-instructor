@@ -18,6 +18,7 @@ export interface Classroom extends Timestamps {
 }
 
 export interface Student extends User, Timestamps {
+  notify?: true;
   accepted: boolean;
 }
 
