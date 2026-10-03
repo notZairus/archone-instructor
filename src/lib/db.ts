@@ -504,7 +504,7 @@ export const getInstructorFeedback = async ({
       databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
       tableId: "6a994862001659d9de4d",
       queries: [
-        Query.equal("instructorId", instructorId),
+        Query.equal("instructorId", instructorId as string),
         ...(analysisId ? [Query.equal("analysisId", analysisId)] : []),
         ...(fileName ? [Query.equal("fileName", fileName)] : []),
         Query.orderDesc("$createdAt"),
