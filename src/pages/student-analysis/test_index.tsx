@@ -61,7 +61,7 @@ const StudentAnalysis = () => {
     fileAnalyses: null,
   });
   const [alphabeticalOrder, setAlphabeticalOrder] = useState<"asc" | "desc">(
-    "asc",
+    "desc",
   );
 
   useEffect(() => {

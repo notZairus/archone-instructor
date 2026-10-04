@@ -1,7 +1,15 @@
 import { Link, useParams } from "react-router";
 import { useClassroomContext } from "@/contexts/classroomContext";
+import { ClassEditDialog } from "@/components/ClassEditDialog";
+import { DeleteClassDialog } from "@/components/DeleteClassDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Card,
   CardContent,
@@ -51,19 +59,22 @@ import {
   Pie,
   PieChart,
 } from "recharts";
-import type { Student } from "@/types/global";
+import type { Classroom, Student } from "@/types/global";
 import {
   AlertTriangle,
   BarChart3,
   FileText,
   RefreshCw,
   Folders,
+  MoreHorizontal,
   Users,
 } from "lucide-react";
 
 const ClassroomShow = () => {
   const { id } = useParams();
-  const { classrooms } = useClassroomContext();
+  const { classrooms, setClassrooms } = useClassroomContext();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [classStats, setClassStats] = useState<StudentAnalytics | null>(null);
   const [classStatsLoading, setClassStatsLoading] = useState(false);
@@ -445,8 +456,64 @@ const ClassroomShow = () => {
                 Show Analyses
               </Link>
             </Button>
+            <div className="pl-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon-lg"
+                    variant="outline"
+                    aria-label="Classroom actions"
+                  >
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setIsEditDialogOpen(true);
+                    }}
+                  >
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={() => setIsDeleteDialogOpen(true)}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
+
+        <ClassEditDialog
+          classroom={classroom}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSaved={(updatedClassroom: Classroom) => {
+            setClassrooms((current) =>
+              current.map((currentClassroom) =>
+                currentClassroom.$id === updatedClassroom.$id
+                  ? updatedClassroom
+                  : currentClassroom,
+              ),
+            );
+          }}
+        />
+        <DeleteClassDialog
+          classroom={classroom}
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          onDeleted={(classroomId) => {
+            setClassrooms((current) =>
+              current.filter(
+                (currentClassroom) => currentClassroom.$id !== classroomId,
+              ),
+            );
+          }}
+        />
 
         <Card className="overflow-hidden">
           <CardHeader className="border-b bg-muted/20 pb-5">
@@ -814,7 +881,7 @@ export const StudentStatsView = ({
 
   return (
     <div className="space-y-4 text-base">
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2 items-start">
         <Card>
           <CardHeader>
             <CardTitle>Top Issues</CardTitle>

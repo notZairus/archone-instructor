@@ -84,6 +84,32 @@ export const saveClassroom = async (
   return newClassroom;
 };
 
+export const updateClassroom = async (
+  classroomId: string,
+  name: string,
+  description: string,
+) => {
+  const updatedClassroom = await tablesDB.updateRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "classrooms",
+    rowId: classroomId,
+    data: {
+      name,
+      description,
+    },
+  });
+
+  return updatedClassroom as unknown as Classroom;
+};
+
+export const deleteClassroom = async (classroomId: string) => {
+  return tablesDB.deleteRow({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "classrooms",
+    rowId: classroomId,
+  });
+};
+
 export const createFolder = async ({
   name,
   description,
@@ -474,15 +500,9 @@ export const sendFeedback = async (data: {
     databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
     tableId: "6a994862001659d9de4d",
     rowId: ID.unique(),
-    data,
-  });
-
-  await tablesDB.updateRow({
-    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
-    tableId: "users",
-    rowId: data.studentId,
     data: {
-      notify: true,
+      ...data,
+      viewed: false,
     },
   });
 };
@@ -520,6 +540,112 @@ export const getInstructorFeedback = async ({
 
   return feedbackRows;
 };
+
+export async function getLatestAnalysis(userId: string, fileName: string) {
+  const result = await tablesDB.listRows({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "analyses",
+    queries: [
+      Query.equal("userId", userId),
+      Query.equal("fileName", fileName),
+      Query.orderDesc("$createdAt"),
+      Query.limit(1),
+    ],
+  });
+
+  const analysis = result.rows[0];
+
+  if (!analysis) {
+    return null;
+  }
+
+  if (analysis.mode === "complexity") {
+    const functions = await tablesDB.listRows({
+      databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+      tableId: "complexities",
+      queries: [Query.equal("analysisId", analysis.$id), Query.limit(MAX_ROWS)],
+    });
+
+    const fnWithTimeSpaceComplexity = await Promise.all(
+      functions.rows.map(async (func) => {
+        const functionId = func.$id;
+
+        const timeComp = await tablesDB.listRows({
+          databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+          tableId: "tcomplexities",
+          queries: [
+            Query.equal("complexityId", functionId),
+            Query.limit(MAX_ROWS),
+          ],
+        });
+
+        const spaceComp = await tablesDB.listRows({
+          databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+          tableId: "scomplexities",
+          queries: [
+            Query.equal("complexityId", functionId),
+            Query.limit(MAX_ROWS),
+          ],
+        });
+
+        return {
+          ...func,
+          space: spaceComp.rows[0],
+          time: timeComp.rows[0],
+        };
+      }),
+    );
+
+    return {
+      $id: analysis.$id,
+      id: analysis.$id,
+      userId: analysis.userId,
+      fileName: analysis.fileName,
+      fileType: analysis.fileType,
+      code: analysis.code,
+      mode: analysis.mode,
+      createdAt: analysis.$createdAt,
+      updatedAt: analysis.$updatedAt,
+      complexitySummary: {
+        functions: fnWithTimeSpaceComplexity,
+      },
+    };
+  } else {
+    const properties = ["comments", "issues", "functions", "variables"];
+    const propertiesData: Record<string, unknown[]> = {};
+
+    for (const property of properties) {
+      propertiesData[property] = await getAnalysisProperty(
+        property,
+        analysis.$id,
+      );
+    }
+
+    const issues = propertiesData.issues;
+
+    const filteredIssues = removeDuplicatedIssues(issues as Issue[]);
+
+    const _propertiesDataWithFilteredIssues = {
+      ...propertiesData,
+      issues: filteredIssues,
+    };
+
+    const formattedAnalysis = {
+      $id: analysis.$id,
+      id: analysis.$id,
+      userId: analysis.userId,
+      fileName: analysis.fileName,
+      fileType: analysis.fileType,
+      code: analysis.code,
+      mode: analysis.mode,
+      createdAt: analysis.$createdAt,
+      updatedAt: analysis.$updatedAt,
+      ..._propertiesDataWithFilteredIssues,
+    };
+
+    return formattedAnalysis;
+  }
+}
 
 // HELPER /////////////////////////////////////////////////
 // HELPER /////////////////////////////////////////////////

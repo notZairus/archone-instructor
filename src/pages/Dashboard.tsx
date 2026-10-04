@@ -59,6 +59,8 @@ const emptyClassroomForm: ClassroomForm = {
   description: "",
 };
 
+const RECENT_ANALYSES_POLL_INTERVAL = 10_000;
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [waitingStudents, setWaitingStudents] = useState(0);
@@ -134,37 +136,43 @@ const Dashboard = () => {
     }
   }, [classrooms]);
 
-  useEffect(() => {
-    async function fetchAnalyses() {
-      setIsLoadingAnalyses(true);
-      try {
-        const students: Student[] = [];
-        const analysesList: Analysis[] = [];
+  const fetchAnalyses = useCallback(async () => {
+    setIsLoadingAnalyses(true);
+    try {
+      const students: Student[] = [];
+      const analysesList: Analysis[] = [];
 
-        for (const classroom of classrooms) {
-          const classroomStudents = await getClassroomStudents(classroom.$id);
-          classroomStudents.forEach((student) => {
-            if (!students.some((s) => s.$id === student.$id)) {
-              students.push(student);
-            }
-          });
-        }
-
-        for (const student of students) {
-          const studentAnalyses: any = await getUserAnalyses(student.$id);
-          analysesList.push(...studentAnalyses);
-        }
-
-        setIsLoadingAnalyses(false);
-        setAnalyses(analysesList);
-      } catch (err) {
-        setIsLoadingAnalyses(false);
-        console.error(err);
+      for (const classroom of classrooms) {
+        const classroomStudents = await getClassroomStudents(classroom.$id);
+        classroomStudents.forEach((student) => {
+          if (!students.some((s) => s.$id === student.$id)) {
+            students.push(student);
+          }
+        });
       }
-    }
 
-    fetchAnalyses();
+      for (const student of students) {
+        const studentAnalyses: any = await getUserAnalyses(student.$id);
+        analysesList.push(...studentAnalyses);
+      }
+
+      setAnalyses(analysesList);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingAnalyses(false);
+    }
   }, [classrooms]);
+
+  useEffect(() => {
+    void fetchAnalyses();
+
+    const intervalId = window.setInterval(() => {
+      void fetchAnalyses();
+    }, RECENT_ANALYSES_POLL_INTERVAL);
+
+    return () => window.clearInterval(intervalId);
+  }, [fetchAnalyses]);
 
   useEffect(() => {
     void fetchDashboardStats();

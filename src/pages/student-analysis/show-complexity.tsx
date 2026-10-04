@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { Maximize2, MessageSquareText, Minimize2 } from "lucide-react";
+import {
+  ArrowRight,
+  Maximize2,
+  MessageSquareText,
+  Minimize2,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -25,6 +30,7 @@ import {
   getAnalysisById,
   getClassroomStudents,
   getInstructorFeedback,
+  getLatestAnalysis,
   getUserById,
 } from "@/lib/db";
 import { useClassroomContext } from "@/contexts/classroomContext";
@@ -41,6 +47,7 @@ import type {
   Feedback,
   Issue,
   Classroom,
+  Analysis,
 } from "@/types/global";
 import {
   ISSUE_PRINCIPLE_BY_TITLE,
@@ -93,6 +100,14 @@ export default function StudentAnalysisShow() {
   const [feedbackText, setFeedbackText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [latestAnalysis, setLatestAnalysis] = useState<Analysis | null>(null);
+
+  const isLatestAnalysis = useMemo(() => {
+    if (!analysis || !latestAnalysis) {
+      return false;
+    }
+    return latestAnalysis.id === analysis.id;
+  }, [analysis, latestAnalysis]);
 
   const codeLines = useMemo(
     () => analysis?.code.split(/\r?\n/) || [],
@@ -155,6 +170,27 @@ export default function StudentAnalysisShow() {
 
     void fetchAnalysis();
   }, [analysisId, classrooms, classroomName, studentEmail, studentName]);
+
+  useEffect(() => {
+    if (!analysis) {
+      return;
+    }
+
+    const fetchLatestAnalysis = async () => {
+      try {
+        const latest = await getLatestAnalysis(
+          analysis.userId,
+          analysis.fileName,
+        );
+
+        setLatestAnalysis(latest as Analysis | null);
+      } catch (err) {
+        console.log("Error fetching latest analysis:", err);
+      }
+    };
+
+    fetchLatestAnalysis();
+  }, [analysis]);
 
   useEffect(() => {
     if (!analysisId || !analysis?.fileName || !authUser?.$id) {
@@ -293,6 +329,12 @@ export default function StudentAnalysisShow() {
   };
 
   const handleFeedbackSubmit = async () => {
+    if (!isLatestAnalysis) {
+      toast.error("Feedback can only be given on the latest analysis.");
+      setIsFeedbackDialogOpen(false);
+      return;
+    }
+
     if (!feedbackText.trim()) {
       return;
     }
@@ -367,6 +409,7 @@ export default function StudentAnalysisShow() {
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
           </Card>
+
         </div>
       </div>
     );
@@ -387,6 +430,7 @@ export default function StudentAnalysisShow() {
               </CardDescription>
             </CardHeader>
           </Card>
+
         </div>
       </div>
     );
@@ -496,6 +540,8 @@ export default function StudentAnalysisShow() {
                 ? ` through ${selectedLineEnd}`
                 : ""}
               .
+              {!isLatestAnalysis &&
+                " Feedback is unavailable because this is not the latest analysis."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 px-4 pb-2">
@@ -525,15 +571,22 @@ export default function StudentAnalysisShow() {
                 </pre>
               </ScrollArea>
             </div>
-            <div>
-              <p className="text-muted-foreground text-xs mb-2">Message: </p>
-              <Textarea
-                className="h-24 resize-none"
-                value={feedbackText}
-                onChange={(event) => setFeedbackText(event.target.value)}
-                placeholder="Type your feedback here"
-              />
-            </div>
+            {isLatestAnalysis ? (
+              <div>
+                <p className="text-muted-foreground text-xs mb-2">Message: </p>
+                <Textarea
+                  className="h-24 resize-none"
+                  value={feedbackText}
+                  onChange={(event) => setFeedbackText(event.target.value)}
+                  placeholder="Type your feedback here"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                This analysis is not the latest version. Open the latest
+                analysis to give feedback.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -543,7 +596,22 @@ export default function StudentAnalysisShow() {
             >
               Cancel
             </Button>
-            <Button onClick={handleFeedbackSubmit}>Send Feedback</Button>
+            {isLatestAnalysis ? (
+              <Button onClick={handleFeedbackSubmit}>Send Feedback</Button>
+            ) : (
+              <Button
+                type="button"
+                disabled={!latestAnalysis?.id}
+                onClick={() => {
+                  if (latestAnalysis?.id) {
+                    setIsFeedbackDialogOpen(false);
+                    navigate(`/analyses/${latestAnalysis.id}`);
+                  }
+                }}
+              >
+                Open Latest Analysis
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -783,6 +851,18 @@ export default function StudentAnalysisShow() {
               </ScrollArea>
             </CardContent>
           </Card>
+          {!isLatestAnalysis && latestAnalysis?.id && (
+            <Button
+              type="button"
+              className="fixed bottom-6 right-6 z-50 shadow-lg"
+              onClick={() => navigate(`/analyses/${latestAnalysis.id}`)}
+              title="Open latest analysis"
+              aria-label="Open latest analysis"
+            >
+              Open Latest Analysis
+              <ArrowRight />
+            </Button>
+          )}
         </div>
       </div>
     </>

@@ -285,7 +285,7 @@ const ClassroomFolders = () => {
                     <div className="flex flex-wrap items-center gap-3">
                       <Link
                         to={`/classrooms/${classroom.$id}/folders/${folder.id}`}
-                        className="font-medium underline-offset-4 hover:text-primary hover:underline"
+                        className="block w-64 max-w-full wrap-break-word font-medium underline-offset-4 hover:text-primary hover:underline"
                       >
                         {folder.name}
                       </Link>
