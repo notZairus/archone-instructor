@@ -778,10 +778,7 @@ export default function StudentAnalysisShow() {
               Back
             </Button>
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                onClick={() => setIsFeedbackListOpen(true)}
-              >
+              <Button type="button" onClick={() => setIsFeedbackListOpen(true)}>
                 <MessageSquareText />
                 Feedbacks ({analysisFeedback.length})
               </Button>
