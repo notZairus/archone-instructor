@@ -81,14 +81,7 @@ function App() {
             </UnauthenticatedRoute>
           }
         />
-        <Route
-          path="/register-student"
-          element={
-            <UnauthenticatedRoute>
-              <RegisterStudent />
-            </UnauthenticatedRoute>
-          }
-        />
+        <Route path="/register-student" element={<RegisterStudent />} />
 
         <Route path="/verify" element={<Verify />} />
       </Routes>
