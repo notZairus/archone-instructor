@@ -409,7 +409,6 @@ export default function StudentAnalysisShow() {
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
           </Card>
-
         </div>
       </div>
     );
@@ -430,7 +429,6 @@ export default function StudentAnalysisShow() {
               </CardDescription>
             </CardHeader>
           </Card>
-
         </div>
       </div>
     );

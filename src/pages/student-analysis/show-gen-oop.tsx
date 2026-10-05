@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, GitMerge } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -28,6 +28,7 @@ import {
   getInstructorFeedback,
   getUserById,
   getLatestAnalysis,
+  getMerges,
 } from "@/lib/db";
 import { useClassroomContext } from "@/contexts/classroomContext";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -37,7 +38,13 @@ import {
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { useThemeContext } from "@/contexts/use-theme-context";
 import { Separator } from "@/components/ui/separator";
-import type { Analysis, Feedback, Issue, Classroom } from "@/types/global";
+import type {
+  Analysis,
+  Feedback,
+  Issue,
+  Classroom,
+  AnalysisMerge,
+} from "@/types/global";
 import {
   TYPE_DISPLAY_ORDER,
   ISSUE_PRINCIPLE_BY_TITLE,
@@ -47,6 +54,7 @@ import {
 import CircularBar from "@/components/CircularBar";
 import { useAuthContext } from "@/contexts/authContext";
 import { sendFeedback } from "@/lib/db";
+import { cleanFileName } from "@/lib/helpers";
 
 type LocationState = {
   studentName?: string;
@@ -79,6 +87,7 @@ export default function StudentAnalysisShow() {
   const [selectedLineEnd, setSelectedLineEnd] = useState<number | null>(null);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [isFeedbackListOpen, setIsFeedbackListOpen] = useState(false);
+  const [isMergesDialogOpen, setIsMergesDialogOpen] = useState(false);
   const [analysisFeedback, setAnalysisFeedback] = useState<Feedback[]>([]);
   const [expandedFeedbackIds, setExpandedFeedbackIds] = useState<Set<string>>(
     new Set(),
@@ -92,6 +101,7 @@ export default function StudentAnalysisShow() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [latestAnalysis, setLatestAnalysis] = useState<Analysis | null>(null);
+  const [analysisMerges, setAnalysisMerges] = useState<AnalysisMerge[]>([]);
 
   const codeLines = useMemo(
     () => analysis?.code.split(/\r?\n/) || [],
@@ -171,7 +181,22 @@ export default function StudentAnalysisShow() {
       }
     };
 
+    const fetchMerges = async () => {
+      try {
+        const mergesData = await getMerges(
+          analysis.userId,
+          analysis.fileName,
+          analysis.createdAt,
+        );
+
+        setAnalysisMerges(mergesData as AnalysisMerge[]);
+      } catch (err) {
+        console.log("Error fetching merges:", err);
+      }
+    };
+
     fetchLatestAnalysis();
+    fetchMerges();
   }, [analysis]);
 
   useEffect(() => {
@@ -436,7 +461,6 @@ export default function StudentAnalysisShow() {
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
           </Card>
-
         </div>
       </div>
     );
@@ -457,7 +481,6 @@ export default function StudentAnalysisShow() {
               </CardDescription>
             </CardHeader>
           </Card>
-
         </div>
       </div>
     );
@@ -640,6 +663,78 @@ export default function StudentAnalysisShow() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isMergesDialogOpen} onOpenChange={setIsMergesDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Merges for this analysis</DialogTitle>
+            <DialogDescription>
+              Code merges associated with this analysis.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-150 px-4">
+            {analysisMerges.length === 0 ? (
+              <p className="pb-4 text-sm text-muted-foreground">
+                No merges were found for this analysis.
+              </p>
+            ) : (
+              <div className="space-y-4 pb-4">
+                {analysisMerges.map((merge, index) => (
+                  <div
+                    key={merge.id || `${merge.analysisId}-${index}`}
+                    className="space-y-4 rounded-lg border bg-card p-4"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium">Merge {index + 1}</p>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            merge.aiCode && analysis.code.includes(merge.aiCode)
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          AI code{" "}
+                          {merge.aiCode && analysis.code.includes(merge.aiCode)
+                            ? "present"
+                            : "not present"}
+                        </span>
+                      </div>
+                      {merge.$createdAt && (
+                        <p className="text-xs text-muted-foreground">
+                          Created {formatDateTime(merge.$createdAt)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="mb-2 text-sm font-medium">
+                          Original code
+                        </p>
+                        <pre className="h-96 overflow-auto whitespace-pre-wrap rounded-md bg-muted/60 p-3 text-xs">
+                          {renderHighlightedCode(
+                            merge.originalCode,
+                            merge.targetCode,
+                          )}
+                        </pre>
+                      </div>
+                      <div>
+                        <p className="mb-2 text-sm font-medium">Merged code</p>
+                        <pre className="h-96 overflow-auto whitespace-pre-wrap rounded-md bg-muted/60 p-3 text-xs">
+                          {renderHighlightedCode(
+                            merge.mergedCode,
+                            merge.aiCode,
+                          )}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog for showing an issue */}
       {selectedIssue && (
         <Dialog open={isIssueDialogOpen} onOpenChange={setIsIssueDialogOpen}>
@@ -721,10 +816,20 @@ export default function StudentAnalysisShow() {
             >
               Back
             </Button>
-            <Button type="button" onClick={() => setIsFeedbackListOpen(true)}>
-              <MessageSquareText />
-              Feedbacks ({analysisFeedback.length})
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" onClick={() => setIsFeedbackListOpen(true)}>
+                <MessageSquareText />
+                Feedbacks ({analysisFeedback.length})
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsMergesDialogOpen(true)}
+              >
+                <GitMerge />
+                Merges ({analysisMerges.length})
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-6 md:grid-cols-3 items-start">
@@ -743,7 +848,7 @@ export default function StudentAnalysisShow() {
                   <div className="p-2 border bg-card rounded-lg">
                     <p className="text-xs text-muted-foreground">File: </p>
                     <p className="wrap-break-word">
-                      {analysis.fileName.replace("\\", "/").split("/").pop()}
+                      {cleanFileName(analysis.fileName)}
                     </p>
                   </div>
                   <div className="p-2 border bg-card rounded-lg">
@@ -1025,6 +1130,34 @@ function formatDateTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(timestamp);
+}
+
+function renderHighlightedCode(code: string, highlightedCode: string) {
+  if (!code) {
+    return "No code available.";
+  }
+
+  if (!highlightedCode || !code.includes(highlightedCode)) {
+    return code;
+  }
+
+  const parts = code.split(highlightedCode);
+
+  return parts.flatMap((part, index) => {
+    if (index === parts.length - 1) {
+      return [part];
+    }
+
+    return [
+      part,
+      <mark
+        key={`highlight-${index}`}
+        className="rounded bg-yellow-300/70 px-0.5 text-inherit dark:bg-yellow-500/50"
+      >
+        {highlightedCode}
+      </mark>,
+    ];
+  });
 }
 
 function getViolatedPrinciple(issue: Issue) {

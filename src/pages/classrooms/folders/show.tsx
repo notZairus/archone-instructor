@@ -10,6 +10,7 @@ import {
   FileCode2,
   Folder,
   FolderOpen,
+  GitMerge,
   History,
   ShieldAlert,
   Users,
@@ -37,9 +38,15 @@ import { useClassroomContext } from "@/contexts/classroomContext";
 import {
   getClassroomStudents,
   getFoldersByClassroomId,
+  getMerges,
   getUserAnalyses,
 } from "@/lib/db";
-import type { Analysis, ClassroomFolder, Student } from "@/types/global";
+import type {
+  Analysis,
+  AnalysisMerge,
+  ClassroomFolder,
+  Student,
+} from "@/types/global";
 import { cleanFileName, normalizeAnalysisForSimilarity } from "@/lib/helpers";
 import {
   buildStudentAnalytics,
@@ -93,6 +100,13 @@ const FolderShow = () => {
   );
   const [selectedSimilarityGroup, setSelectedSimilarityGroup] =
     useState<SimilarityGroup | null>(null);
+  const [selectedAnalysisMerges, setSelectedAnalysisMerges] = useState<{
+    analysis: Analysis;
+    merges: AnalysisMerge[];
+  } | null>(null);
+  const [mergesByAnalysisId, setMergesByAnalysisId] = useState<
+    Record<string, AnalysisMerge[]>
+  >({});
   const [currentPage, setCurrentPage] = useState(1);
   const [studentSearch, setStudentSearch] = useState("");
   const [expandedStudentIds, setExpandedStudentIds] = useState<Set<string>>(
@@ -161,6 +175,22 @@ const FolderShow = () => {
 
         if (!isMounted) return;
 
+        const mergeEntries = await Promise.all(
+          studentsWithMatches.flatMap((student) =>
+            student.allAnalyses.map(async (analysis) => {
+              const merges = await getMerges(
+                analysis.userId,
+                analysis.fileName,
+                analysis.createdAt,
+              );
+              return [analysis.id, merges as AnalysisMerge[]] as const;
+            }),
+          ),
+        );
+
+        if (!isMounted) return;
+
+        setMergesByAnalysisId(Object.fromEntries(mergeEntries));
         setFolderAnalytics(
           buildStudentAnalytics(
             studentsWithMatches.flatMap(
@@ -249,6 +279,7 @@ const FolderShow = () => {
       analyses: visibleAnalysesByStudent.get(student.$id) || [],
     }))
     .filter((student) => student.analyses.length > 0);
+  const mergeUsageRanking = getMergeUsageRanking(students, mergesByAnalysisId);
 
   if (!classroom) {
     return (
@@ -336,6 +367,85 @@ const FolderShow = () => {
           </DialogContent>
         </Dialog>
 
+        <Dialog
+          open={selectedAnalysisMerges !== null}
+          onOpenChange={(open) => {
+            if (!open) setSelectedAnalysisMerges(null);
+          }}
+        >
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>
+                Merges for {selectedAnalysisMerges?.analysis.fileName}
+              </DialogTitle>
+              <DialogDescription>
+                Code merges associated with this analysis.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[70vh] overflow-y-auto px-4">
+              <div className="space-y-4 pb-4">
+                {selectedAnalysisMerges?.merges.map((merge, index) => (
+                  <div
+                    key={merge.id || `${merge.analysisId}-${index}`}
+                    className="space-y-4 rounded-lg border bg-card p-4"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium">Merge {index + 1}</p>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            merge.aiCode &&
+                            selectedAnalysisMerges.analysis.code.includes(
+                              merge.aiCode,
+                            )
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          AI code{" "}
+                          {merge.aiCode &&
+                          selectedAnalysisMerges.analysis.code.includes(
+                            merge.aiCode,
+                          )
+                            ? "present"
+                            : "not present"}
+                        </span>
+                      </div>
+                      {merge.$createdAt && (
+                        <p className="text-xs text-muted-foreground">
+                          Created {formatDate(merge.$createdAt)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="mb-2 text-sm font-medium">
+                          Original code
+                        </p>
+                        <pre className="h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted/60 p-3 text-xs">
+                          {renderHighlightedCode(
+                            merge.originalCode,
+                            merge.targetCode,
+                          )}
+                        </pre>
+                      </div>
+                      <div>
+                        <p className="mb-2 text-sm font-medium">Merged code</p>
+                        <pre className="h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted/60 p-3 text-xs">
+                          {renderHighlightedCode(
+                            merge.mergedCode,
+                            merge.aiCode,
+                          )}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {folderAnalytics && (
           <Card>
             <CardHeader className="border-b bg-muted/20 pb-5">
@@ -353,6 +463,54 @@ const FolderShow = () => {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader className="border-b bg-muted/20 pb-5">
+            <CardTitle className="flex items-center gap-2">
+              <GitMerge className="size-5 text-primary" />
+              Students Using Merge
+            </CardTitle>
+            <CardDescription>
+              Top 10 students ranked by the number of merge instances in this
+              folder.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {mergeUsageRanking.length ? (
+              <div className="space-y-2">
+                {mergeUsageRanking.map((entry, index) => (
+                  <div
+                    key={entry.student.$id}
+                    className="flex items-center gap-3 rounded-md border bg-card/60 p-3"
+                  >
+                    <Badge
+                      variant={index < 3 ? "default" : "secondary"}
+                      className="w-10 justify-center"
+                    >
+                      {index + 1}
+                    </Badge>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">
+                        {entry.student.name}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {entry.student.email}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0">
+                      {entry.mergeCount}{" "}
+                      {entry.mergeCount === 1 ? "merge" : "merges"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No students have used merge in this folder yet.
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="border-b bg-muted/20 pb-5">
@@ -532,24 +690,22 @@ const FolderShow = () => {
                           </div>
                           <div className="space-y-2">
                             {student.analyses.map((analysis) => (
-                              <button
+                              <AnalysisListItem
                                 key={analysis.id}
-                                type="button"
-                                className="group flex w-full items-center gap-3 rounded-md border bg-card/60 p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent"
-                                onClick={() => openAnalysis(analysis, student)}
-                              >
-                                <FileCode2 className="size-5 shrink-0 text-primary" />
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate font-medium">
-                                    {analysis.fileName}
-                                  </span>
-                                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <CalendarDays className="size-3.5" />
-                                    {formatDate(analysis.createdAt)}
-                                  </span>
-                                </span>
-                                <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-                              </button>
+                                analysis={analysis}
+                                merges={mergesByAnalysisId[analysis.id] || []}
+                                muted={false}
+                                onOpenAnalysis={() =>
+                                  openAnalysis(analysis, student)
+                                }
+                                onOpenMerges={() =>
+                                  setSelectedAnalysisMerges({
+                                    analysis,
+                                    merges:
+                                      mergesByAnalysisId[analysis.id] || [],
+                                  })
+                                }
+                              />
                             ))}
                           </div>
                           {pastAnalyses.length > 0 && (
@@ -582,26 +738,25 @@ const FolderShow = () => {
                               {isExpanded && (
                                 <div className="mt-2 space-y-2 border-t pt-3">
                                   {pastAnalyses.map((analysis) => (
-                                    <button
+                                    <AnalysisListItem
                                       key={analysis.id}
-                                      type="button"
-                                      className="group flex w-full items-center gap-3 rounded-md border bg-muted/30 p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent"
-                                      onClick={() =>
+                                      analysis={analysis}
+                                      merges={
+                                        mergesByAnalysisId[analysis.id] || []
+                                      }
+                                      muted
+                                      onOpenAnalysis={() =>
                                         openAnalysis(analysis, student)
                                       }
-                                    >
-                                      <FileCode2 className="size-5 shrink-0 text-muted-foreground" />
-                                      <span className="min-w-0 flex-1">
-                                        <span className="block truncate font-medium">
-                                          {analysis.fileName}
-                                        </span>
-                                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                                          <CalendarDays className="size-3.5" />
-                                          {formatDate(analysis.createdAt)}
-                                        </span>
-                                      </span>
-                                      <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-                                    </button>
+                                      onOpenMerges={() =>
+                                        setSelectedAnalysisMerges({
+                                          analysis,
+                                          merges:
+                                            mergesByAnalysisId[analysis.id] ||
+                                            [],
+                                        })
+                                      }
+                                    />
                                   ))}
                                 </div>
                               )}
@@ -681,6 +836,87 @@ function MessageCard({
       </Card>
     </div>
   );
+}
+
+function AnalysisListItem({
+  analysis,
+  merges,
+  muted,
+  onOpenAnalysis,
+  onOpenMerges,
+}: {
+  analysis: Analysis;
+  merges: AnalysisMerge[];
+  muted: boolean;
+  onOpenAnalysis: () => void;
+  onOpenMerges: () => void;
+}) {
+  return (
+    <div
+      className={`group flex w-full items-center gap-3 rounded-md border p-3 ${
+        muted ? "bg-muted/30" : "bg-card/60"
+      }`}
+    >
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left transition-colors hover:text-primary"
+        onClick={onOpenAnalysis}
+      >
+        <FileCode2
+          className={`size-5 shrink-0 ${
+            muted ? "text-muted-foreground" : "text-primary"
+          }`}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">
+            {analysis.fileName}
+          </span>
+          <span className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CalendarDays className="size-3.5" />
+            {formatDate(analysis.createdAt)}
+          </span>
+        </span>
+        <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+      </button>
+      {merges.length > 0 && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          aria-label={`View ${merges.length} merge${
+            merges.length === 1 ? "" : "s"
+          } for ${analysis.fileName}`}
+          onClick={onOpenMerges}
+        >
+          <GitMerge />
+          {merges.length}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function getMergeUsageRanking(
+  students: StudentFolderAnalysis[],
+  mergesByAnalysisId: Record<string, AnalysisMerge[]>,
+) {
+  return students
+    .map((student) => ({
+      student,
+      mergeCount: student.allAnalyses.reduce(
+        (total, analysis) =>
+          total + (mergesByAnalysisId[analysis.id]?.length || 0),
+        0,
+      ),
+    }))
+    .filter((entry) => entry.mergeCount > 0)
+    .sort(
+      (first, second) =>
+        second.mergeCount - first.mergeCount ||
+        first.student.name.localeCompare(second.student.name),
+    )
+    .slice(0, 10);
 }
 
 function formatDate(value: string) {
@@ -855,6 +1091,26 @@ function getAverageSimilarity(matches: SimilarityMatch[]) {
 
 function formatSimilarityScore(score: number) {
   return `${Math.round(score * 100)}%`;
+}
+
+function renderHighlightedCode(code: string, highlightedCode: string) {
+  if (!code || !highlightedCode || !code.includes(highlightedCode)) {
+    return code || "No code available.";
+  }
+
+  return code.split(highlightedCode).flatMap((part, index, parts) => {
+    if (index === parts.length - 1) return [part];
+
+    return [
+      part,
+      <mark
+        key={`highlight-${index}`}
+        className="rounded bg-yellow-300/70 px-0.5 text-inherit dark:bg-yellow-500/50"
+      >
+        {highlightedCode}
+      </mark>,
+    ];
+  });
 }
 
 export default FolderShow;

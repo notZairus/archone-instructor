@@ -647,6 +647,35 @@ export async function getLatestAnalysis(userId: string, fileName: string) {
   }
 }
 
+export async function getMerges(
+  userId: string,
+  fileName: string,
+  dateBefore: string,
+) {
+  const result = await tablesDB.listRows({
+    databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
+    tableId: "merges",
+    queries: [
+      Query.equal("userId", userId),
+      Query.equal("fileName", fileName),
+      Query.createdBefore(dateBefore),
+    ],
+  });
+
+  const structured = result.rows.map((row) => ({
+    id: row.$id,
+    originalCode: row.originalCode,
+    targetCode: row.targetCode,
+    aiCode: row.aiCode,
+    analysisId: row.analysisId,
+    fileName: row.fileName,
+    mergedCode: row.mergedCode,
+    userId: row.userId,
+  }));
+
+  return structured || [];
+}
+
 // HELPER /////////////////////////////////////////////////
 // HELPER /////////////////////////////////////////////////
 // HELPER /////////////////////////////////////////////////

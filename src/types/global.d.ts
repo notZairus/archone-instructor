@@ -98,7 +98,7 @@ export interface ComplexityFunction extends Timestamps {
   } | null;
 }
 
-export interface ClassroomFolder {
+export interface ClassroomFolder extends Timestamps {
   id: string;
   name: string;
   description: string;
@@ -107,6 +107,17 @@ export interface ClassroomFolder {
   submissions?: any[];
   updatedAt: string;
   classroom?: Classroom;
+}
+
+export interface AnalysisMerge extends Timestamps {
+  id: string;
+  originalCode: string;
+  targetCode: string;
+  aiCode: string;
+  analysisId: string;
+  fileName: string;
+  mergedCode: string;
+  userId: string;
 }
 
 declare module "string-similarity" {
