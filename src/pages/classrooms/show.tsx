@@ -201,7 +201,7 @@ const ClassroomShow = () => {
       try {
         const riskyStudents = await Promise.all(
           acceptedStudentIds.map(async (studentId) => {
-            const analyses = await getUserAnalyses(studentId);
+            const analyses = await getUserAnalysesWithoutComplexity(studentId);
             const analytics = buildStudentAnalytics(
               analyses as AnalysisRecord[],
             );
@@ -793,6 +793,7 @@ const ClassroomShow = () => {
 export type AnalysisRecord = {
   createdAt?: string;
   mode?: "general" | "oop";
+  code?: string;
   issues?: Array<{
     title?: string;
     type?: string;
@@ -829,6 +830,7 @@ type TopIssue = {
 export type StudentAnalytics = {
   qualityScore: number;
   totalAnalyses: number;
+  latestWarnings: number;
   totalIssues: number;
   warnings: number;
   improvements: number;
@@ -1062,6 +1064,21 @@ export function buildStudentAnalytics(
   );
 
   const trend = computeTrend(datedAnalyses);
+  const latestAnalysis = analyses.reduce<AnalysisRecord | null>(
+    (latest, analysis) => {
+      if (!latest) return analysis;
+
+      const latestTime = latest.createdAt
+        ? new Date(latest.createdAt).getTime()
+        : Number.NEGATIVE_INFINITY;
+      const analysisTime = analysis.createdAt
+        ? new Date(analysis.createdAt).getTime()
+        : Number.NEGATIVE_INFINITY;
+
+      return analysisTime > latestTime ? analysis : latest;
+    },
+    null,
+  );
 
   const topIssueTitles = toSortedIssuePercentages(
     issueTitleCounts,
@@ -1076,6 +1093,9 @@ export function buildStudentAnalytics(
       avgNesting,
     }),
     totalAnalyses: analyses.length,
+    latestWarnings:
+      latestAnalysis?.issues?.filter((issue) => issue.type === "warning")
+        .length || 0,
     totalIssues,
     warnings,
     improvements,
@@ -1115,7 +1135,11 @@ function estimateFileLines(analysis: AnalysisRecord) {
     maxLine = Math.max(maxLine, fnEnd);
   }
 
-  return maxLine;
+  const sourceLineCount = analysis.code
+    ? analysis.code.split(/\r\n|\r|\n/).length
+    : 0;
+
+  return Math.max(maxLine, sourceLineCount);
 }
 
 function computeQualityScore({
@@ -1332,26 +1356,25 @@ function computeStudentRisk(analytics: StudentAnalytics | null): {
   }
 
   if (analytics.trend.direction === "declining") {
-    riskScore += 25;
+    riskScore += 30;
     reasons.push("Declining trend");
   }
 
   if (analytics.qualityScore < 60) {
-    riskScore += 25;
+    riskScore += 30;
     reasons.push("Low quality score");
-  } else if (analytics.qualityScore < 75) {
-    riskScore += 10;
-    reasons.push("Moderate quality score");
   }
 
   const issueDensity =
     analytics.totalIssues / Math.max(1, analytics.estimatedTotalLines);
   if (issueDensity > 0.08) {
-    riskScore += 20;
+    riskScore += 25;
     reasons.push("High issue density");
-  } else if (issueDensity > 0.04) {
-    riskScore += 10;
-    reasons.push("Moderate issue density");
+  }
+
+  if (analytics.latestWarnings >= 3) {
+    riskScore += 20;
+    reasons.push("At least 3 warnings in latest submission");
   }
 
   const finalReasons = reasons.length ? reasons.slice(0, 2) : ["Monitor"];
