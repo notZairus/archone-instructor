@@ -59,7 +59,7 @@ const emptyClassroomForm: ClassroomForm = {
   description: "",
 };
 
-const RECENT_ANALYSES_POLL_INTERVAL = 10_000;
+const RECENT_ANALYSES_POLL_INTERVAL = 60_000;
 
 const Dashboard = () => {
   const navigate = useNavigate();
