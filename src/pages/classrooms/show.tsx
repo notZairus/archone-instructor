@@ -17,6 +17,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -26,7 +33,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   acceptClassroomStudent,
   declineClassroomStudent,
@@ -63,6 +70,7 @@ import type { Classroom, Student } from "@/types/global";
 import {
   AlertTriangle,
   BarChart3,
+  ChevronRight,
   FileText,
   RefreshCw,
   Folders,
@@ -72,11 +80,27 @@ import {
 
 const ClassroomShow = () => {
   const { id } = useParams();
+  return <ClassroomShowContent key={id} id={id} />;
+};
+
+type IssueStudentCounts = Map<string, Map<string, number>>;
+
+const ClassroomShowContent = ({ id }: { id: string | undefined }) => {
   const { classrooms, setClassrooms } = useClassroomContext();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [classStats, setClassStats] = useState<StudentAnalytics | null>(null);
+  const [issueStudentCounts, setIssueStudentCounts] = useState<IssueStudentCounts>(new Map());
+  const [selectedIssue, setSelectedIssue] = useState<{
+    title: string;
+    grouped: boolean;
+  } | null>(null);
+  const issueTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const classStatsRequestRef = useRef(0);
+  useEffect(() => () => {
+    classStatsRequestRef.current += 1;
+  }, []);
   const [classStatsLoading, setClassStatsLoading] = useState(false);
   const [classStatsError, setClassStatsError] = useState<string | null>(null);
   const [studentStats, setStudentStats] = useState<
@@ -142,8 +166,10 @@ const ClassroomShow = () => {
 
   const refreshClassStatsByIds = useCallback(
     async (acceptedStudentIds: string[]) => {
+      const requestId = ++classStatsRequestRef.current;
       if (!acceptedStudentIds.length) {
         setClassStats(null);
+        setIssueStudentCounts(new Map());
         setClassStatsError(null);
         setClassStatsLoading(false);
         return;
@@ -163,12 +189,27 @@ const ClassroomShow = () => {
         const combinedAnalyses = analysesByStudent.flat() as AnalysisRecord[];
         const analytics = buildStudentAnalytics(combinedAnalyses);
 
+        const counts: IssueStudentCounts = new Map();
+        analysesByStudent.forEach((analyses, index) => {
+          const studentId = acceptedStudentIds[index];
+          for (const analysis of analyses as AnalysisRecord[]) {
+            for (const issue of analysis.issues || []) {
+              const title = issue.title || "Unknown Issue";
+              const studentsForIssue = counts.get(title) ?? new Map<string, number>();
+              studentsForIssue.set(studentId, (studentsForIssue.get(studentId) ?? 0) + 1);
+              counts.set(title, studentsForIssue);
+            }
+          }
+        });
+        if (requestId !== classStatsRequestRef.current) return;
         setClassStats(analytics);
+        setIssueStudentCounts(counts);
       } catch {
+        if (requestId !== classStatsRequestRef.current) return;
         setClassStatsError("Could not load class stats right now.");
         throw new Error("class-stats-refresh-failed");
       } finally {
-        setClassStatsLoading(false);
+        if (requestId === classStatsRequestRef.current) setClassStatsLoading(false);
       }
     },
     [],
@@ -183,7 +224,7 @@ const ClassroomShow = () => {
   }, [acceptedStudentIdsKey, refreshClassStatsByIds]);
 
   useEffect(() => {
-    void fetchClassStats();
+    void fetchClassStats().catch(() => undefined);
   }, [fetchClassStats]);
 
   const refreshNeedsAttentionByIds = useCallback(
@@ -414,6 +455,20 @@ const ClassroomShow = () => {
     ? aggregateOtherIssues(classStats.topIssueTitles)
     : [];
 
+  const selectedIssueTitles = selectedIssue?.grouped
+    ? (classStats?.topIssueTitles.slice(5).map((issue) => issue.title) ?? [])
+    : selectedIssue ? [selectedIssue.title] : [];
+  const selectedStudentCounts = new Map<string, number>();
+  for (const title of selectedIssueTitles) {
+    for (const [studentId, count] of issueStudentCounts.get(title) ?? []) {
+      selectedStudentCounts.set(studentId, (selectedStudentCounts.get(studentId) ?? 0) + count);
+    }
+  }
+  const matchingStudents = acceptedStudents
+    .filter((student) => selectedStudentCounts.has(student.$id))
+    .map((student) => ({ student, count: selectedStudentCounts.get(student.$id)! }))
+    .sort((a, b) => b.count - a.count || a.student.name.localeCompare(b.student.name));
+
   displayedTopIssues.forEach((issue, index) => {
     chartConfig[issue.title as string] = {
       label: issue.title,
@@ -487,6 +542,49 @@ const ClassroomShow = () => {
             </div>
           </div>
         </header>
+
+        <Dialog open={selectedIssue !== null} onOpenChange={(open) => {
+          if (!open) setSelectedIssue(null);
+        }}>
+          <DialogContent
+            className="flex max-h-[85dvh] max-w-xl flex-col gap-0 overflow-hidden p-0 motion-reduce:animate-none"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              issueTriggerRef.current?.focus();
+            }}
+          >
+            <DialogHeader className="shrink-0 border-b p-6 pr-12 text-left">
+              <DialogTitle className="break-words leading-snug">{selectedIssue?.title}</DialogTitle>
+              <DialogDescription>
+                {matchingStudents.length} {matchingStudents.length === 1 ? "student has" : "students have"} this issue in their analyses.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="min-h-0 overflow-y-auto overscroll-contain px-6" aria-busy={classStatsLoading}>
+              {classStatsLoading ? (
+                <p className="py-6 text-sm text-muted-foreground" role="status">Updating students?</p>
+              ) : classStatsError ? (
+                <p className="py-6 text-sm text-destructive" role="alert">Could not update students. Close this dialog and refresh classroom data.</p>
+              ) : matchingStudents.length ? (
+                <ul className="divide-y">
+                  {matchingStudents.map(({ student, count }) => (
+                    <li key={student.$id} className="flex items-center justify-between gap-4 py-4">
+                      <div className="min-w-0">
+                        <p className="break-words font-medium">{student.name}</p>
+                        <p className="break-all text-sm text-muted-foreground">{student.email}</p>
+                      </div>
+                      <span className="shrink-0 text-right text-sm tabular-nums">
+                        <span className="font-semibold">{count}</span>
+                        <span className="block text-xs text-muted-foreground">{count === 1 ? "occurrence" : "occurrences"}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="py-6 text-sm text-muted-foreground">No matching students found</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <ClassEditDialog
           classroom={classroom}
@@ -590,11 +688,17 @@ const ClassroomShow = () => {
                         {displayedTopIssues.length ? (
                           <div className="space-y-2">
                             {displayedTopIssues.map((issue, index) => (
-                              <div
-                                key={issue.title}
-                                className="flex items-start justify-between gap-4"
+                              <button
+                                key={`${index}-${issue.title}`}
+                                type="button"
+                                aria-haspopup="dialog"
+                                onClick={(event) => {
+                                  issueTriggerRef.current = event.currentTarget;
+                                  setSelectedIssue({ title: issue.title, grouped: index === 5 });
+                                }}
+                                className="flex w-full items-start justify-between gap-3 rounded-md p-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                               >
-                                <span>
+                                <span className="min-w-0 break-words">
                                   <span className="block">
                                     {index + 1}. {issue.title}
                                   </span>
@@ -604,10 +708,11 @@ const ClassroomShow = () => {
                                     </span>
                                   )}
                                 </span>
-                                <span className="font-medium">
+                                <span className="flex shrink-0 items-center gap-2 font-medium tabular-nums">
                                   {issue.percent.toFixed(2)}%
+                                  <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
                                 </span>
-                              </div>
+                              </button>
                             ))}
                           </div>
                         ) : (
@@ -850,9 +955,12 @@ type StudentRiskEntry = {
 
 export const StudentStatsView = ({
   stats,
+  onIssueSelect,
 }: {
   stats: StudentAnalytics | null;
+  onIssueSelect?: (title: string, trigger: HTMLElement) => void;
 }) => {
+  const IssueRow = onIssueSelect ? "button" : "div";
   if (!stats) {
     return (
       <Card>
@@ -895,11 +1003,16 @@ export const StudentStatsView = ({
             {stats.topIssueTitles.length ? (
               <div className="space-y-2">
                 {stats.topIssueTitles.map((issue, index) => (
-                  <div
+                  <IssueRow
                     key={issue.title}
-                    className="flex items-start justify-between gap-4"
+                    type={onIssueSelect ? "button" : undefined}
+                    aria-haspopup={onIssueSelect ? "dialog" : undefined}
+                    onClick={onIssueSelect ? (event) => onIssueSelect(issue.title, event.currentTarget) : undefined}
+                    className={onIssueSelect
+                      ? "flex w-full items-start justify-between gap-4 rounded-md p-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                      : "flex items-start justify-between gap-4"}
                   >
-                    <span>
+                    <span className="min-w-0 break-words">
                       <span className="block font-bold text-[1.02rem]">
                         {index + 1}. {issue.title}
                       </span>
@@ -909,10 +1022,11 @@ export const StudentStatsView = ({
                         </span>
                       )}
                     </span>
-                    <span className="font-medium">
+                    <span className="flex shrink-0 items-center gap-2 font-medium tabular-nums">
                       {issue.percent.toFixed(2)}%
+                      {onIssueSelect && <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />}
                     </span>
-                  </div>
+                  </IssueRow>
                 ))}
               </div>
             ) : (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   ArrowLeft,
@@ -88,9 +88,18 @@ const SIMILARITY_THRESHOLD = 0.85;
 
 const FolderShow = () => {
   const { classroomId, folderId } = useParams();
+  return <FolderShowContent key={`${classroomId}/${folderId}`} classroomId={classroomId} folderId={folderId} />;
+};
+
+const FolderShowContent = ({ classroomId, folderId }: {
+  classroomId: string | undefined;
+  folderId: string | undefined;
+}) => {
   const navigate = useNavigate();
   const { classrooms } = useClassroomContext();
   const classroom = classrooms.find((item) => item.$id === classroomId);
+  const [selectedIssueTitle, setSelectedIssueTitle] = useState<string | null>(null);
+  const issueTriggerRef = useRef<HTMLElement | null>(null);
   const [folder, setFolder] = useState<ClassroomFolder | null>(null);
   const [students, setStudents] = useState<StudentFolderAnalysis[]>([]);
   const [folderAnalytics, setFolderAnalytics] =
@@ -281,6 +290,18 @@ const FolderShow = () => {
     .filter((student) => student.analyses.length > 0);
   const mergeUsageRanking = getMergeUsageRanking(students, mergesByAnalysisId);
 
+  const issueStudents = selectedIssueTitle === null ? [] : students
+    .filter((student) => student.accepted)
+    .map((student) => ({
+      student,
+      count: student.allAnalyses.reduce((total, analysis) => total +
+        (analysis.issues || []).filter((issue) =>
+          (issue.title || "Unknown Issue") === selectedIssueTitle,
+        ).length, 0),
+    }))
+    .filter(({ count }) => count > 0)
+    .sort((a, b) => b.count - a.count || a.student.name.localeCompare(b.student.name));
+
   if (!classroom) {
     return (
       <MessageCard
@@ -324,6 +345,47 @@ const FolderShow = () => {
             </Link>
           </Button>
         </header>
+
+        <Dialog open={selectedIssueTitle !== null} onOpenChange={(open) => {
+          if (!open) setSelectedIssueTitle(null);
+        }}>
+          <DialogContent
+            className="flex max-h-[85dvh] max-w-xl flex-col gap-0 overflow-hidden p-0 motion-reduce:animate-none"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              issueTriggerRef.current?.focus();
+            }}
+          >
+            <DialogHeader className="shrink-0 border-b p-6 pr-12 text-left">
+              <DialogTitle className="break-words leading-snug">{selectedIssueTitle}</DialogTitle>
+              <DialogDescription>
+                {issueStudents.length} {issueStudents.length === 1 ? "student has" : "students have"} this issue in their folder analyses.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="min-h-0 overflow-y-auto overscroll-contain px-6">
+              {error ? (
+                <p className="py-6 text-sm text-destructive" role="alert">Could not update students. Folder data will retry automatically.</p>
+              ) : issueStudents.length ? (
+                <ul className="divide-y">
+                  {issueStudents.map(({ student, count }) => (
+                    <li key={student.$id} className="flex items-center justify-between gap-4 py-4">
+                      <div className="min-w-0">
+                        <p className="break-words font-medium">{student.name}</p>
+                        <p className="break-all text-sm text-muted-foreground">{student.email}</p>
+                      </div>
+                      <span className="shrink-0 text-right text-sm tabular-nums">
+                        <span className="font-semibold">{count}</span>
+                        <span className="block text-xs text-muted-foreground">{count === 1 ? "occurrence" : "occurrences"}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="py-6 text-sm text-muted-foreground">No matching students found</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog
           open={selectedSimilarityGroup !== null}
@@ -459,7 +521,10 @@ const FolderShow = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <StudentStatsView stats={folderAnalytics} />
+              <StudentStatsView stats={folderAnalytics} onIssueSelect={(title, trigger) => {
+                issueTriggerRef.current = trigger;
+                setSelectedIssueTitle(title);
+              }} />
             </CardContent>
           </Card>
         )}
